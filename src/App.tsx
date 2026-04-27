@@ -3,10 +3,11 @@ import { AppProvider, useAppProfile } from './context/AppContext';
 import { LoginPage }    from './pages/LoginPage';
 import { DashboardPage } from './pages/DashboardPage';
 
-// ─── AppRoot runs inside AppProvider so it can call useApp() ─────────────────
 function AppRoot() {
-  const [entered, setEntered] = useState(false);
-  const { updateProfile }    = useAppProfile();
+  const { profile, updateProfile } = useAppProfile();
+
+  // Skip login if a name was already persisted from a previous session
+  const [entered, setEntered] = useState(() => !!profile.name.trim());
 
   const handleEnter = (name: string) => {
     const trimmed = name.trim();

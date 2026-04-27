@@ -4,108 +4,101 @@ import type { Language } from '../context/AppContext';
 const GEMINI_KEY = import.meta.env.VITE_GEMINI_API_KEY ?? '';
 const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_KEY}`;
 
-// ─── Language-aware Prompt Builder ────────────────────────────────────────────
+// ─── Tactical Advisor Prompt ───────────────────────────────────────────────────
 function buildPrompt(
-  route:     AmmanRouteConfig,
-  metrics:   EcoMetrics,
-  distance:  number,
-  mass:      number,
-  regenEff:  number,
-  language:  Language,
-  userName:  string
+  route:    AmmanRouteConfig,
+  metrics:  EcoMetrics,
+  distance: number,
+  mass:     number,
+  regenEff: number,
+  language: Language,
+  userName: string
 ): string {
-  const topGrade = metrics.totalElevationGain > 200 ? 'steep' : 'moderate';
-  const regenPct = ((metrics.regenRecoveryKWh / (metrics.energyPenaltyKWh + 0.001)) * 100).toFixed(0);
-
-  const langInstruction = language === 'ar'
-    ? `أجب حصراً باللهجة العامية الأردنية (عمّانية). استخدم تعبيرات مثل "يا زلمة", "يا كبير", "هيك", "والله", "يلا", "شو بدك أكتر". اذكر المعالم بالاسم. جملة أو جملتان فقط، ذكية وموجزة.`
-    : `Respond in sharp, confident, professional English. Be witty and data-driven. 1-2 sentences max. Reference specific Amman landmarks by name.`;
-
-  // For custom routes, add generic Amman context so Gemini can still give specific insights
-  const isCustom  = route.id === 'custom';
+  const topGrade  = metrics.totalElevationGain > 200 ? 'steep' : 'moderate';
+  const regenPct  = ((metrics.regenRecoveryKWh / (metrics.energyPenaltyKWh + 0.001)) * 100).toFixed(0);
+  const isCustom  = route.id === 'custom' || route.id === 'live';
   const routeCtx  = isCustom
-    ? `Custom user route from Abdali Boulevard to ${route.name} (live search result)`
+    ? `Custom route to ${route.name}`
     : route.name;
-
   const landmarkCtx = route.landmarks.length > 0
     ? route.landmarks.join('; ')
-    : 'Abdali Boulevard, Downtown Amman, 3rd Circle area, Jabal Amman slopes';
+    : 'Abdali Boulevard, Downtown Amman, 3rd Circle, Jabal Amman slopes';
 
-  return `You are EcoRoute AI's co-pilot — a brilliant, context-aware driving assistant for Amman, Jordan.
-You know Amman's streets intimately: the brutal 7th Circle climb, the Abdoun bridge's satisfying regen descent,
-Rainbow Street's winding drop from Jabal Amman, and the way Sweifieh sits between two hills.
+  const langInstruction = language === 'ar'
+    ? `أجب حصراً باللهجة العامية الأردنية (عمّانية). ابدأ الرسالة بـ "يا ${userName}،" مباشرة. استخدم تعبيرات مثل "يا زلمة", "يا كبير", "هيك", "والله", "يلا", "شو بدك أكتر". اذكر معالم بالاسم. جملة واحدة إلى جملتين فقط — ذكية، تكتيكية، مبنية على الأرقام.`
+    : `Respond in razor-sharp, confident English. Open with "Ya ${userName}," — then deliver ONE tactical insight fusing the physics numbers with specific Amman landmarks. Max 2 sentences. Be witty and precise. Never use generic phrases.`;
+
+  return `You are EcoRoute AI — a Tactical Driving Advisor for Amman, Jordan.
+You know Amman intimately: the punishing 7th Circle climb, Abdoun Bridge's satisfying regen descent,
+Rainbow Street's winding drop from Jabal Amman, Sweifieh's dual-hill trap.
+Your tone: professional, sharp, data-driven — part F1 race engineer, part street-smart Ammani.
+
+PERSONA: Address the user as "Ya ${userName}" (English) or "يا ${userName}" (Arabic) in your opening.
+Combine precise physics data with hyper-local Amman street knowledge.
+Give ONE actionable insight. No greetings. No padding. Pure tactical intelligence.
 
 LANGUAGE INSTRUCTION: ${langInstruction}
-Address the user directly by name "${userName}" in your first sentence.
 
 Route: ${routeCtx}
 Distance: ${distance.toFixed(1)} km
-Terrain: ${topGrade} (${metrics.totalElevationGain}m gain, ${metrics.totalElevationLoss}m loss)
-mgh Energy Penalty: ${metrics.energyPenaltyKWh.toFixed(3)} kWh  (m=${mass}kg, g=9.81)
-Regen Recovery:     ${metrics.regenRecoveryKWh.toFixed(3)} kWh  (η=${Math.round(regenEff * 100)}%)
-Regen vs Climb:     ${regenPct}%
-Net Energy Draw:    ${metrics.netEnergyKWh.toFixed(3)} kWh
+Terrain: ${topGrade} (↑${metrics.totalElevationGain}m / ↓${metrics.totalElevationLoss}m)
+mgh Penalty: ${metrics.energyPenaltyKWh.toFixed(3)} kWh  (m=${mass}kg · g=9.81 m/s²)
+Regen Recovery: ${metrics.regenRecoveryKWh.toFixed(3)} kWh  (η=${Math.round(regenEff * 100)}%)
+Regen vs Climb: ${regenPct}% recovered
+Net Energy Draw: ${metrics.netEnergyKWh.toFixed(3)} kWh
 CO₂ Saved vs Petrol: ${metrics.co2SavedKg.toFixed(2)} kg
 Eco Score: ${metrics.ecoScore.toFixed(0)}/100
-Landmarks / Context: ${landmarkCtx}
+Landmarks: ${landmarkCtx}
 
-Generate ONE insight. Be specific to both the physics numbers AND the Amman terrain.`;
+Generate ONE tactical insight now.`;
 }
 
-// ─── Main API Call ────────────────────────────────────────────────────────────
+// ─── Main Insight API Call ─────────────────────────────────────────────────────
 export async function getEcoInsight(
-  route:     AmmanRouteConfig,
-  metrics:   EcoMetrics,
-  distance:  number,
-  mass:      number,
-  regenEff:  number,
-  language:  Language = 'en',
+  route:    AmmanRouteConfig,
+  metrics:  EcoMetrics,
+  distance: number,
+  mass:     number,
+  regenEff: number,
+  language: Language = 'en',
   userName = 'Driver'
 ): Promise<string> {
   const safeName = normalizeName(userName);
-  if (!GEMINI_KEY) {
+  if (!GEMINI_KEY) return getFallbackInsight(route, metrics, language, safeName);
+
+  try {
+    const response = await fetch(API_URL, {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        contents: [{ parts: [{ text: buildPrompt(route, metrics, distance, mass, regenEff, language, safeName) }] }],
+        generationConfig: { temperature: 0.94, maxOutputTokens: 140, topK: 40, topP: 0.95 },
+        safetySettings: [
+          { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_NONE' },
+          { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_NONE' },
+        ],
+      }),
+    });
+    if (!response.ok) return getFallbackInsight(route, metrics, language, safeName);
+
+    const data = await response.json() as {
+      candidates: { content: { parts: { text: string }[] } }[];
+    };
+    return data.candidates?.[0]?.content?.parts?.[0]?.text?.trim()
+      ?? getFallbackInsight(route, metrics, language, safeName);
+  } catch {
     return getFallbackInsight(route, metrics, language, safeName);
   }
-
-  const response = await fetch(API_URL, {
-    method:  'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      contents: [{ parts: [{ text: buildPrompt(route, metrics, distance, mass, regenEff, language, safeName) }] }],
-      generationConfig: {
-        temperature:      0.92,
-        maxOutputTokens:  130,
-        topK:             40,
-        topP:             0.95,
-      },
-      safetySettings: [
-        { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_NONE' },
-        { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_NONE' },
-      ],
-    }),
-  });
-
-  if (!response.ok) {
-    console.warn('[EcoRoute] Gemini API error:', response.status);
-    return getFallbackInsight(route, metrics, language, safeName);
-  }
-
-  const data = await response.json() as {
-    candidates: { content: { parts: { text: string }[] } }[];
-  };
-
-  return data.candidates?.[0]?.content?.parts?.[0]?.text
-    ?? getFallbackInsight(route, metrics, language, safeName);
 }
 
-// ─── Welcome / No-Route Insight ───────────────────────────────────────────────
+// ─── Welcome Insight ───────────────────────────────────────────────────────────
 export async function getWelcomeInsight(language: Language, userName = 'Driver'): Promise<string> {
   const safeName = normalizeName(userName);
   if (!GEMINI_KEY) return getWelcomeFallback(language, safeName);
 
   const prompt = language === 'ar'
-    ? `أنت مساعد EcoRoute AI لمدينة عمّان. اكتب رسالة ترحيب قصيرة (جملة واحدة أو جملتان) باللهجة الأردنية العامية. خاطب المستخدم باسمه "${safeName}" من البداية. تحدث عن توفير الطاقة وتضاريس عمّان الجبلية والمسارات البيئية. استخدم تعابير مثل "يا زلمة" أو "والله" أو "يا كبير".`
-    : `You are EcoRoute AI for Amman, Jordan. Write a one-line welcome message in sharp, witty English. Address the user by name "${safeName}" in the opening. Reference Amman's unique hilly topology (7th Circle, Abdoun, Jabal Amman) and real-time mgh physics. Be energetic and data-driven.`;
+    ? `أنت مستشار EcoRoute التكتيكي لعمّان. اكتب رسالة ترحيب قصيرة — جملة واحدة أو جملتان باللهجة الأردنية العامية. ابدأ بـ "يا ${safeName}،". تحدث عن تضاريس عمّان الجبلية وتوفير الطاقة وفيزياء mgh. لا تقل أشياء مبتذلة.`
+    : `You are EcoRoute's Tactical Advisor for Amman. Write one sharp, witty welcome line in English. Open with "Ya ${safeName}," — then reference Amman's terrain (7th Circle, Abdoun, Jabal Amman) and mgh energy physics. Be energetic and data-forward. No fluff.`;
 
   try {
     const response = await fetch(API_URL, {
@@ -113,7 +106,7 @@ export async function getWelcomeInsight(language: Language, userName = 'Driver')
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         contents: [{ parts: [{ text: prompt }] }],
-        generationConfig: { temperature: 0.9, maxOutputTokens: 90, topK: 40, topP: 0.95 },
+        generationConfig: { temperature: 0.92, maxOutputTokens: 95, topK: 40, topP: 0.95 },
         safetySettings: [
           { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_NONE' },
           { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_NONE' },
@@ -130,11 +123,11 @@ export async function getWelcomeInsight(language: Language, userName = 'Driver')
 
 function getWelcomeFallback(language: Language, userName: string): string {
   return language === 'ar'
-    ? `يا ${userName}، أهلاً بك في EcoRoute — عمّان بتضاريسها الجبلية تعطيك طاقة مجانية من كل منحدر!`
-    : `Hey ${userName}, welcome to EcoRoute — Amman's hills are a free energy source. Enter your route and let the mgh engine do the math.`;
+    ? `يا ${userName}، أهلاً بك في EcoRoute — عمّان بجبالها تعطيك طاقة مجانية من كل منحدر. أدخل مسارك والـ mgh engine يحسب لك كل شيء.`
+    : `Ya ${userName}, welcome to EcoRoute — Amman's hills are your free energy grid. Drop a route and let the mgh engine run the numbers.`;
 }
 
-// ─── Bilingual Fallback Insights ──────────────────────────────────────────────
+// ─── Fallback Insights ─────────────────────────────────────────────────────────
 function getFallbackInsight(
   route:    AmmanRouteConfig,
   metrics:  EcoMetrics,
@@ -143,36 +136,33 @@ function getFallbackInsight(
 ): string {
   const en: Record<string, string[]> = {
     'route-alpha': [
-      `${metrics.regenRecoveryKWh.toFixed(3)} kWh recaptured on the Jabal Amman descent — that's the EV tax refund Rainbow Street owes you.`,
-      `The 7th Circle tried to drain you. Net draw: ${metrics.netEnergyKWh.toFixed(3)} kWh. You win.`,
-      `${metrics.co2SavedKg.toFixed(2)} kg CO₂ saved vs petrol — the eco score doesn't lie: ${metrics.ecoScore.toFixed(0)}/100.`,
+      `Ya ${userName}, the Jabal Amman descent just handed you ${metrics.regenRecoveryKWh.toFixed(3)} kWh — that's Rainbow Street paying your EV bill.`,
+      `Ya ${userName}, 7th Circle tried to drain you. Net: ${metrics.netEnergyKWh.toFixed(3)} kWh. Eco score ${metrics.ecoScore.toFixed(0)}/100. You win this round.`,
+      `Ya ${userName}, ${metrics.co2SavedKg.toFixed(2)} kg CO₂ saved vs petrol — the mgh engine didn't miss a single slope.`,
     ],
     'route-beta': [
-      `Abdoun Bridge handed you ${metrics.regenRecoveryKWh.toFixed(3)} kWh for free. That's the most efficient descent in West Amman.`,
-      `7th Circle summit: ${metrics.energyPenaltyKWh.toFixed(3)} kWh cost, eco score still ${metrics.ecoScore.toFixed(0)}/100. Gravity is on your side on the way down.`,
-      `Sweifieh to Abdali: net ${metrics.netEnergyKWh.toFixed(3)} kWh — the city's best kept efficiency secret.`,
+      `Ya ${userName}, Abdoun Bridge delivered ${metrics.regenRecoveryKWh.toFixed(3)} kWh free — the most efficient descent in West Amman is yours.`,
+      `Ya ${userName}, 7th Circle summit cost ${metrics.energyPenaltyKWh.toFixed(3)} kWh but your eco score is still ${metrics.ecoScore.toFixed(0)}/100. Physics is working for you.`,
+      `Ya ${userName}, Sweifieh to Abdali: net ${metrics.netEnergyKWh.toFixed(3)} kWh — the city's best-kept efficiency secret.`,
     ],
   };
-
   const ar: Record<string, string[]> = {
     'route-alpha': [
-      `يا زلمة، ${metrics.regenRecoveryKWh.toFixed(3)} kWh رجعولك من نزلة جبل عمّان — هيك بتكسر فاتورة البنزين بدون ما تحكي.`,
-      `والله الدوار السابع ما قدر عليك — صافي الطاقة ${metrics.netEnergyKWh.toFixed(3)} kWh بس. يا كبير هاد إنجاز!`,
-      `${metrics.co2SavedKg.toFixed(2)} كغ CO₂ وفّرت عالبيئة — الكوكب بيقولك شكراً يا زلمة.`,
+      `يا ${userName}، نزلة جبل عمّان ردّت لك ${metrics.regenRecoveryKWh.toFixed(3)} kWh — هيك بتطلع فاتورة Rainbow Street بالمجان.`,
+      `يا زلمة، الدوار السابع ما قدر عليك — الطاقة الصافية ${metrics.netEnergyKWh.toFixed(3)} kWh بس. يا كبير، هاد رقم تحفة!`,
+      `يا ${userName}، ${metrics.co2SavedKg.toFixed(2)} كغ CO₂ وفّرت على الكوكب — والله محرك mgh ما ضيّع تضرس.`,
     ],
     'route-beta': [
-      `يا كبير، جسر عبدون أعطاك ${metrics.regenRecoveryKWh.toFixed(3)} kWh مجاناً — هيك بتطلع الفاتورة بكرة.`,
-      `الدوار السابع يا زلمة — ${metrics.energyPenaltyKWh.toFixed(3)} kWh عشان تطلعه، بس نقاط البيئة ${metrics.ecoScore.toFixed(0)}/100. والله ما في أحسن منك!`,
-      `الصويفية لعبدالي: ${metrics.netEnergyKWh.toFixed(3)} kWh صافي — يلا هاي أقوى وجبة مجانية بعمّان.`,
+      `يا كبير، جسر عبدون أعطاك ${metrics.regenRecoveryKWh.toFixed(3)} kWh مجاناً — هيك أحسن طاقة مجانية بغرب عمّان.`,
+      `يا ${userName}، قمة الدوار السابع كلّفت ${metrics.energyPenaltyKWh.toFixed(3)} kWh، بس نقاطك ${metrics.ecoScore.toFixed(0)}/100. والله ما في أحسن منك.`,
+      `يا زلمة، الصويفية لعبدالي: ${metrics.netEnergyKWh.toFixed(3)} kWh صافي — يلا هاي أقوى جلسة كفاءة بالمدينة.`,
     ],
   };
-
   const pool = (language === 'ar' ? ar : en)[route.id] ?? [
     language === 'ar'
-      ? `يا ${userName}، نقاط البيئة ${metrics.ecoScore.toFixed(0)}/100 — يا زلمة، حتى جبال عمّان صارت تشتغل معك.`
-      : `${userName}, eco score ${metrics.ecoScore.toFixed(0)}/100 — even Amman's hills are working for you now.`,
+      ? `يا ${userName}، الإيكو سكور ${metrics.ecoScore.toFixed(0)}/100 — حتى جبال عمّان صارت تشتغل معك.`
+      : `Ya ${userName}, eco score ${metrics.ecoScore.toFixed(0)}/100 — even Amman's brutal hills are on your side now.`,
   ];
-
   return pool[Math.floor(Math.random() * pool.length)];
 }
 

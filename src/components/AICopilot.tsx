@@ -6,7 +6,21 @@ import { useAppLanguage, useAppProfile, useThemeColors } from '../context/AppCon
 import { useT } from '../i18n';
 import type { EcoMetrics, AmmanRouteConfig, VehicleConfig } from '../types';
 
-const SPRING = { type: 'spring', stiffness: 100, damping: 20 } as const;
+const SPRING = { type: 'spring', stiffness: 120, damping: 20 } as const;
+
+// Read name directly from localStorage so Gemini always gets the real name
+// even if the React profile state hasn't propagated yet on first render.
+function getResolvedName(reactName: string): string {
+  if (reactName.trim()) return reactName.trim();
+  try {
+    const raw = localStorage.getItem('ecoroute-profile');
+    if (raw) {
+      const p = JSON.parse(raw) as { name?: string };
+      if (p.name?.trim()) return p.name.trim();
+    }
+  } catch { /* ignore */ }
+  return 'Driver';
+}
 
 // ─── Typing Animation ─────────────────────────────────────────────────────────
 function TypedText({ text, onDone }: { text: string; onDone?: () => void }) {
@@ -88,7 +102,9 @@ export const AICopilot = memo(function AICopilot({
     setError(false);
     setInsight('');
     try {
-      const text = await getWelcomeInsight(language, profile.name);
+      // getResolvedName falls back to localStorage so "Ya Humam" works on first render
+      const resolvedName = getResolvedName(profile.name);
+      const text = await getWelcomeInsight(language, resolvedName);
       if (fetchId.current === myId) setInsight(text.trim());
     } catch {
       if (fetchId.current === myId) setInsight(t.welcome.subtitle);
@@ -111,7 +127,8 @@ export const AICopilot = memo(function AICopilot({
     setInsight('');
 
     try {
-      const text = await getEcoInsight(route, metrics, distance, vehicle.mass, vehicle.regenEfficiency, language, profile.name);
+      const resolvedName = getResolvedName(profile.name);
+      const text = await getEcoInsight(route, metrics, distance, vehicle.mass, vehicle.regenEfficiency, language, resolvedName);
       if (fetchId.current === myId) setInsight(text.trim());
     } catch {
       if (fetchId.current === myId) {
@@ -147,12 +164,17 @@ export const AICopilot = memo(function AICopilot({
   }, [metricsKey]);
 
   const innerPanel = (
-    <div
-      className="panel"
+    <motion.div
+      className="panel tilt-card"
       style={{
         borderRadius: 14,
         padding: '14px 16px',
         borderColor: error ? 'rgba(239,68,68,0.2)' : undefined,
+      }}
+      whileHover={{
+        scale: 1.015, y: -2,
+        boxShadow: '0 12px 36px rgba(0,0,0,0.55), 0 0 0 1px rgba(0,212,255,0.16), 0 0 24px rgba(0,212,255,0.09)',
+        transition: { type: 'spring', stiffness: 380, damping: 22 },
       }}
     >
         {/* Header */}
@@ -230,7 +252,7 @@ export const AICopilot = memo(function AICopilot({
             {t.ai.badge}
           </span>
         </div>
-    </div>
+    </motion.div>
   );
 
   if (embedded) {

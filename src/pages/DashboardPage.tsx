@@ -2,7 +2,7 @@ import { useState, useCallback, useMemo, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useJsApiLoader } from '@react-google-maps/api';
 import type { Libraries } from '@react-google-maps/api';
-import { Navigation, Navigation2, Zap, Sparkles, SlidersHorizontal } from 'lucide-react';
+import { Navigation, Navigation2, Zap, Sparkles, SlidersHorizontal, ChevronRight } from 'lucide-react';
 import { MapContainer }   from '../components/MapContainer';
 import { ElevationChart } from '../components/ElevationChart';
 import { HUDStats }       from '../components/HUDStats';
@@ -18,13 +18,24 @@ import { useT }           from '../i18n';
 import { AMMAN_ROUTES, FALLBACK_ALPHA } from '../data/mockRoutes';
 import type { VehicleConfig, AmmanRouteConfig, LatLng } from '../types';
 
-// ─── Module-level constants — stable refs, never recreated ───────────────────
-const SPRING: object   = { type: 'spring', stiffness: 100, damping: 20 };
+// ─── Module-level constants ────────────────────────────────────────────────────
+const SPRING: object   = { type: 'spring', stiffness: 120, damping: 20 };
 const GMAPS_KEY        = import.meta.env.VITE_GOOGLE_MAPS_API_KEY ?? '';
 const LIBRARIES: Libraries = ['geometry', 'places'];
 const DUMMY_CONFIG     = AMMAN_ROUTES[0];
+const BLADE_WIDTH      = 'clamp(290px, 24vw, 360px)';
 
-// ─── Boot Screen ──────────────────────────────────────────────────────────────
+// ─── Stagger Variants — used in tab content ────────────────────────────────────
+const TAB_LIST = {
+  hidden:  {},
+  visible: { transition: { staggerChildren: 0.07, when: 'beforeChildren' } },
+};
+const TAB_ITEM = {
+  hidden:  { opacity: 0, y: 12, scale: 0.94 },
+  visible: { opacity: 1, y: 0,  scale: 1,   transition: { type: 'spring' as const, bounce: 0.40, duration: 0.52 } },
+};
+
+// ─── Boot Screen ───────────────────────────────────────────────────────────────
 function BootScreen({ onComplete }: { onComplete: () => void }) {
   const [step, setStep] = useState(0);
   const t = useT();
@@ -54,17 +65,18 @@ function BootScreen({ onComplete }: { onComplete: () => void }) {
         <motion.div
           style={{
             width: 60, height: 60, borderRadius: 18,
-            border: '1px solid rgba(255,255,255,0.1)', background: 'rgba(255,255,255,0.03)',
+            border: '1px solid rgba(255,255,255,0.10)', background: 'rgba(255,255,255,0.03)',
             display: 'flex', alignItems: 'center', justifyContent: 'center', backdropFilter: 'blur(12px)',
           }}
-          animate={{ boxShadow: ['0 0 0 0 rgba(0,212,255,0)', '0 0 0 10px rgba(0,212,255,0.06)', '0 0 0 0 rgba(0,212,255,0)'] }}
+          animate={{ boxShadow: ['0 0 0 0 rgba(0,212,255,0)', '0 0 0 10px rgba(0,212,255,0.07)', '0 0 0 0 rgba(0,212,255,0)'] }}
           transition={{ duration: 2.2, repeat: Infinity }}
         >
           <Navigation size={26} color="#00D4FF" strokeWidth={1.5} />
         </motion.div>
+
         <div style={{ textAlign: 'center' }}>
-          <div style={{ fontSize: 24, fontWeight: 500, letterSpacing: '-0.04em', color: 'rgba(255,255,255,0.92)' }}>EcoRoute</div>
-          <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.28)', letterSpacing: '0.15em', marginTop: 6 }}>{t.boot.subtitle}</div>
+          <div style={{ fontSize: 24, fontWeight: 700, letterSpacing: '-0.05em', color: 'rgba(255,255,255,0.94)' }}>EcoRoute</div>
+          <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.28)', letterSpacing: '0.15em', marginTop: 6, textTransform: 'uppercase' }}>{t.boot.subtitle}</div>
         </div>
       </motion.div>
 
@@ -78,13 +90,7 @@ function BootScreen({ onComplete }: { onComplete: () => void }) {
           initial={{ opacity: 0, y: 6 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.22 }}
-          style={{
-            fontSize: 12,
-            letterSpacing: '0.06em',
-            textAlign: 'center',
-            color: 'rgba(255,255,255,0.58)',
-            minHeight: 18,
-          }}
+          style={{ fontSize: 12, letterSpacing: '0.04em', textAlign: 'center', color: 'rgba(255,255,255,0.55)', minHeight: 18 }}
         >
           {STEPS[step] ?? t.boot.subtitle}
         </motion.div>
@@ -102,17 +108,15 @@ function BootScreen({ onComplete }: { onComplete: () => void }) {
   );
 }
 
-// ─── Right Panel Tab type ─────────────────────────────────────────────────────
+// ─── Side-Blade Right Panel ────────────────────────────────────────────────────
 type RightTab = 'route' | 'data' | 'ai' | 'setup';
-
 const RIGHT_TABS: { id: RightTab; icon: typeof Navigation2; key: string }[] = [
-  { id: 'route', icon: Navigation2,      key: 'ROUTE' },
-  { id: 'data',  icon: Zap,              key: 'DATA'  },
-  { id: 'ai',    icon: Sparkles,         key: 'AI'    },
+  { id: 'route', icon: Navigation2,       key: 'ROUTE' },
+  { id: 'data',  icon: Zap,               key: 'DATA'  },
+  { id: 'ai',    icon: Sparkles,          key: 'AI'    },
   { id: 'setup', icon: SlidersHorizontal, key: 'SETUP' },
 ];
 
-// ─── Unified Right Panel ──────────────────────────────────────────────────────
 interface UnifiedRightPanelProps {
   hasRoute:        boolean;
   activeConfig:    AmmanRouteConfig;
@@ -125,16 +129,19 @@ interface UnifiedRightPanelProps {
   parallaxX:       number;
   parallaxY:       number;
   dir:             'ltr' | 'rtl';
+  isOpen:          boolean;
+  onToggle:        () => void;
 }
 
 function UnifiedRightPanel({
   hasRoute, activeConfig, metrics, vehicle, distance, duration,
   onClear, onVehicleChange, parallaxX, parallaxY, dir,
+  isOpen, onToggle,
 }: UnifiedRightPanelProps) {
   const [tab, setTab] = useState<RightTab>('route');
-  const tc  = useThemeColors();
-  const t   = useT();
-  const side     = dir === 'rtl' ? 'left'  : 'right';
+  const tc   = useThemeColors();
+  const t    = useT();
+  const side = dir === 'rtl' ? 'left' : 'right';
   const pxOffset = dir === 'rtl' ? parallaxX * -1.2 : parallaxX * 1.2;
 
   const prevConfigId = useRef<string>('');
@@ -154,23 +161,35 @@ function UnifiedRightPanel({
 
   return (
     <motion.div
-      initial={{ opacity: 0, x: dir === 'rtl' ? -24 : 24 }}
-      animate={{ opacity: 1, x: 0 }}
-      transition={{ delay: 0.12, ...SPRING } as object}
+      animate={{ x: isOpen ? 0 : (dir === 'rtl' ? -380 : 380), opacity: isOpen ? 1 : 0.0 }}
+      initial={{ opacity: 0, x: dir === 'rtl' ? -32 : 32 }}
+      transition={{ type: 'spring', stiffness: 120, damping: 20 }}
       style={{
         position: 'fixed', [side]: 16, top: 64, bottom: 96, zIndex: 10,
-        width: 'clamp(290px, 24vw, 360px)',
+        width: BLADE_WIDTH,
         display: 'flex', flexDirection: 'column', gap: 10,
         transform: `translate3d(${pxOffset}px, ${parallaxY * -0.7}px, 0)`,
-        transition: 'transform 0.1s linear',
       }}
     >
+      {/* Blade toggle tab */}
+      <button
+        onClick={onToggle}
+        className={`blade-tab${dir === 'rtl' ? ' blade-tab-rtl' : ''}`}
+        style={{
+          [dir === 'rtl' ? 'right' : 'left']: isOpen ? '-22px' : '-22px',
+        }}
+        title={isOpen ? 'Collapse panel' : 'Expand panel'}
+      >
+        <motion.div
+          animate={{ rotate: isOpen ? (dir === 'rtl' ? 180 : 0) : (dir === 'rtl' ? 0 : 180) }}
+          transition={{ type: 'spring', stiffness: 120, damping: 20 }}
+        >
+          <ChevronRight size={13} color={tc.textDim} />
+        </motion.div>
+      </button>
+
       {!hasRoute ? (
-        /* Welcome mode — AI copilot inline */
-        <AICopilot
-          route={null} metrics={metrics} vehicle={vehicle} distance={0}
-          embedded={true}
-        />
+        <AICopilot route={null} metrics={metrics} vehicle={vehicle} distance={0} embedded={true} />
       ) : (
         <>
           {/* Tab bar */}
@@ -178,17 +197,17 @@ function UnifiedRightPanel({
             {RIGHT_TABS.map(({ id, icon: Icon, key }) => (
               <motion.button
                 key={id}
-                whileHover={{ y: -1, scale: 1.015 }}
-                whileTap={{ scale: 0.97 }}
+                whileHover={{ y: -1, scale: 1.02 }}
+                whileTap={{ scale: 0.96 }}
                 onClick={() => setTab(id)}
                 style={{
                   flex: 1, border: 'none', borderRadius: 9, padding: '8px 4px',
                   cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3,
-                  transition: 'all 0.18s', background: tab === id ? tc.tabActiveBg : 'transparent',
+                  transition: 'all 0.16s', background: tab === id ? tc.tabActiveBg : 'transparent',
                 }}
               >
                 <Icon size={12} color={tab === id ? tc.textPrimary : tc.textInactive} strokeWidth={tab === id ? 2 : 1.5} />
-                <span style={{ fontSize: 8, letterSpacing: '0.08em', textTransform: 'uppercase', fontWeight: 500, color: tab === id ? tc.textSecondary : tc.textInactive }}>{key}</span>
+                <span style={{ fontSize: 7, letterSpacing: '0.10em', textTransform: 'uppercase', fontWeight: 600, color: tab === id ? tc.textSecondary : tc.textInactive, fontFamily: 'JetBrains Mono, monospace' }}>{key}</span>
               </motion.button>
             ))}
           </div>
@@ -197,26 +216,27 @@ function UnifiedRightPanel({
           <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 6 }}>
             <AnimatePresence mode="wait">
 
-              {/* ── ROUTE TAB ── */}
               {tab === 'route' && (
                 <motion.div key="route"
-                  initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }}
-                  transition={{ duration: 0.16 }}
+                  variants={TAB_LIST} initial="hidden" animate="visible"
+                  exit={{ opacity: 0, y: -8, transition: { duration: 0.14 } }}
                   style={{ display: 'flex', flexDirection: 'column', gap: 6 }}
                 >
                   {/* Active route card */}
-                  <div className="panel" style={{ borderRadius: 16, padding: '16px 18px', borderColor: 'rgba(0,212,255,0.22)' }}>
+                  <motion.div variants={TAB_ITEM} layout
+                    className="panel" style={{ borderRadius: 16, padding: '16px 18px', borderColor: 'rgba(0,212,255,0.22)' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
                       <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ fontSize: 12, fontWeight: 600, color: tc.textPrimary, letterSpacing: '-0.01em', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginBottom: 4 }}>
+                        <div style={{ fontSize: 12, fontWeight: 600, color: tc.textPrimary, letterSpacing: '-0.02em', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginBottom: 4 }}>
                           {routeName}
                         </div>
-                        <div style={{ fontSize: 10, color: tc.textDesc, lineHeight: 1.5 }}>{routeDesc}</div>
+                        <div style={{ fontSize: 10, color: tc.textDesc, lineHeight: 1.5, letterSpacing: '-0.01em' }}>{routeDesc}</div>
                       </div>
                       <div style={{
-                        width: 28, height: 28, borderRadius: '50%', flexShrink: 0, marginLeft: 10,
+                        width: 30, height: 30, borderRadius: '50%', flexShrink: 0, marginLeft: 10,
                         background: `conic-gradient(#00D4FF ${activeConfig.ecoRating * 3.6}deg, rgba(255,255,255,0.06) 0)`,
                         display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        boxShadow: '0 0 8px rgba(0,212,255,0.20)',
                       }}>
                         <span style={{ fontSize: 8, fontFamily: 'JetBrains Mono, monospace', color: '#00D4FF', fontWeight: 700 }}>
                           {activeConfig.ecoRating}
@@ -231,50 +251,55 @@ function UnifiedRightPanel({
                         { label: t.route.eco,  val: `${activeConfig.ecoRating}/100` },
                       ].map(({ label, val }) => (
                         <div key={label} style={{ flex: 1 }}>
-                        <span style={{ fontSize: 8, color: tc.textDim, letterSpacing: '0.12em', textTransform: 'uppercase', fontWeight: 400, fontFamily: 'JetBrains Mono, monospace' }}>{label}</span>
-                        <div style={{ fontSize: 15, fontFamily: 'JetBrains Mono, monospace', color: tc.textPrimary, fontWeight: 500 }}>{val}</div>
+                          <span style={{ fontSize: 7, color: tc.textDim, letterSpacing: '0.12em', textTransform: 'uppercase', fontWeight: 500, fontFamily: 'JetBrains Mono, monospace' }}>{label}</span>
+                          <div style={{ fontSize: 15, fontFamily: 'JetBrains Mono, monospace', color: tc.textPrimary, fontWeight: 600 }}>{val}</div>
                         </div>
                       ))}
                     </div>
 
                     <div className="divider" style={{ margin: '10px 0' }} />
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <span className="text-label" style={{ fontSize: 9 }}>{t.traffic.title}</span>
+                      <span className="text-label" style={{ fontSize: 8 }}>{t.traffic.title}</span>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                         <div style={{ width: 5, height: 5, borderRadius: '50%', background: trafficColor, animation: 'breathe 2s ease-in-out infinite' }} />
                         <span className="font-data" style={{ fontSize: 11, color: trafficColor }}>{trafficLabel}</span>
                       </div>
                     </div>
 
-                    <motion.button whileTap={{ scale: 0.95 }} onClick={onClear}
+                    <motion.button whileTap={{ scale: 0.94 }}
+                      whileHover={{ scale: 1.02, transition: { type: 'spring', stiffness: 400, damping: 20 } }}
+                      onClick={onClear}
                       style={{
                         marginTop: 12, width: '100%', padding: '7px 0',
                         background: tc.tabActiveBg, border: `1px solid ${tc.divider}`,
-                        borderRadius: 9, cursor: 'pointer', fontSize: 10, color: tc.textSecondary,
+                        borderRadius: 9, cursor: 'pointer', fontSize: 9, color: tc.textSecondary,
                         fontFamily: 'JetBrains Mono, monospace', letterSpacing: '0.08em',
                         transition: 'background 0.15s',
                       }}>
                       {t.search.clearRoute} ×
                     </motion.button>
-                  </div>
+                  </motion.div>
 
-                  <MetricCard label={t.sidebar.distance} value={distance > 0 ? `${distance.toFixed(1)} km` : '—'} delay={0.06}
-                    sparkData={[12.2, 13.8, 11.6, 14.0, 13.3, distance || 13.8]} />
-                  <MetricCard label={t.sidebar.estTime} value={duration > 0 ? `${duration.toFixed(0)} min` : '—'} delay={0.10} />
+                  <motion.div variants={TAB_ITEM} layout>
+                    <MetricCard label={t.sidebar.distance} value={distance > 0 ? `${distance.toFixed(1)} km` : '—'}
+                      sparkData={[12.2, 13.8, 11.6, 14.0, 13.3, distance || 13.8]} />
+                  </motion.div>
+                  <motion.div variants={TAB_ITEM} layout>
+                    <MetricCard label={t.sidebar.estTime} value={duration > 0 ? `${duration.toFixed(0)} min` : '—'} />
+                  </motion.div>
                 </motion.div>
               )}
 
-              {/* ── DATA TAB ── */}
               {tab === 'data' && (
                 <motion.div key="data"
-                  initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }}
-                  transition={{ duration: 0.16 }}
+                  variants={TAB_LIST} initial="hidden" animate="visible"
+                  exit={{ opacity: 0, y: -8, transition: { duration: 0.14 } }}
                   style={{ display: 'flex', flexDirection: 'column', gap: 6 }}
                 >
-                  <EcoScoreCard metrics={metrics} />
+                  <motion.div variants={TAB_ITEM} layout><EcoScoreCard metrics={metrics} /></motion.div>
 
-                  <div className="panel" style={{ borderRadius: 14, padding: '16px' }}>
-                    <div className="text-label" style={{ marginBottom: 14, fontSize: 9 }}>{t.physics.title}</div>
+                  <motion.div variants={TAB_ITEM} layout className="panel" style={{ borderRadius: 14, padding: '16px' }}>
+                    <div className="text-label" style={{ marginBottom: 14, fontSize: 8 }}>{t.physics.title}</div>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                       {[
                         { label: t.physics.mghPenalty, val: `${metrics.energyPenaltyKWh.toFixed(3)}`, unit: 'kWh', color: '#F59E0B' },
@@ -283,19 +308,19 @@ function UnifiedRightPanel({
                         { label: t.physics.co2Offset,  val: `${metrics.co2SavedKg.toFixed(2)}`,       unit: 'kg',  color: '#00E676' },
                       ].map(({ label, val, unit, color }) => (
                         <div key={label} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                          <span className="text-label" style={{ fontSize: 9 }}>{label}</span>
+                          <span className="text-label" style={{ fontSize: 8 }}>{label}</span>
                           <span>
                             <span className="font-data" style={{ fontSize: 13, color }}>{val}</span>
-                            <span style={{ fontSize: 9, color: tc.textUnit, marginLeft: 2 }}>{unit}</span>
+                            <span style={{ fontSize: 8, color: tc.textUnit, marginLeft: 2 }}>{unit}</span>
                           </span>
                         </div>
                       ))}
                     </div>
-                  </div>
+                  </motion.div>
 
-                  <div className="panel" style={{ borderRadius: 12, padding: '14px 16px' }}>
+                  <motion.div variants={TAB_ITEM} layout className="panel" style={{ borderRadius: 12, padding: '14px 16px' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 10 }}>
-                      <span className="text-label" style={{ fontSize: 9 }}>{t.regen.title}</span>
+                      <span className="text-label" style={{ fontSize: 8 }}>{t.regen.title}</span>
                       <span className="font-data" style={{ fontSize: 14, color: '#00E676' }}>{metrics.efficiencyRating.toFixed(0)}%</span>
                     </div>
                     <div className="progress-track">
@@ -305,55 +330,56 @@ function UnifiedRightPanel({
                         transition={{ duration: 1.4, delay: 0.7, ease: [0.34, 1.56, 0.64, 1] }}
                       />
                     </div>
-                  </div>
+                  </motion.div>
 
-                  <div className="panel" style={{ borderRadius: 12, padding: '14px 16px' }}>
-                    <div className="text-label" style={{ fontSize: 9, marginBottom: 12 }}>{t.elevation.title}</div>
+                  <motion.div variants={TAB_ITEM} layout className="panel" style={{ borderRadius: 12, padding: '14px 16px' }}>
+                    <div className="text-label" style={{ fontSize: 8, marginBottom: 12 }}>{t.elevation.title}</div>
                     <div style={{ display: 'flex', gap: 12 }}>
                       <div style={{ flex: 1 }}>
-                        <div className="text-label" style={{ fontSize: 8, color: '#F59E0B', marginBottom: 4 }}>{t.elevation.gain}</div>
-                        <span className="font-data" style={{ fontSize: 18, color: '#F59E0B' }}>+{metrics.totalElevationGain}</span>
+                        <div className="text-label" style={{ fontSize: 7, color: '#F59E0B', marginBottom: 4 }}>{t.elevation.gain}</div>
+                        <span className="font-data" style={{ fontSize: 18, fontWeight: 700, color: '#F59E0B' }}>+{metrics.totalElevationGain}</span>
                         <span style={{ fontSize: 10, color: tc.textUnit, marginLeft: 2 }}>m</span>
                       </div>
                       <div style={{ width: 1, background: tc.dividerV }} />
                       <div style={{ flex: 1 }}>
-                        <div className="text-label" style={{ fontSize: 8, color: '#00E676', marginBottom: 4 }}>{t.elevation.loss}</div>
-                        <span className="font-data" style={{ fontSize: 18, color: '#00E676' }}>−{metrics.totalElevationLoss}</span>
+                        <div className="text-label" style={{ fontSize: 7, color: '#00E676', marginBottom: 4 }}>{t.elevation.loss}</div>
+                        <span className="font-data" style={{ fontSize: 18, fontWeight: 700, color: '#00E676' }}>−{metrics.totalElevationLoss}</span>
                         <span style={{ fontSize: 10, color: tc.textUnit, marginLeft: 2 }}>m</span>
                       </div>
                     </div>
-                  </div>
+                  </motion.div>
                 </motion.div>
               )}
 
-              {/* ── AI TAB ── */}
               {tab === 'ai' && (
                 <motion.div key="ai"
                   initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }}
                   transition={{ duration: 0.16 }}
                 >
-                  <AICopilot
-                    route={activeConfig} metrics={metrics} vehicle={vehicle}
-                    distance={distance} embedded={true}
-                  />
+                  <AICopilot route={activeConfig} metrics={metrics} vehicle={vehicle} distance={distance} embedded={true} />
                 </motion.div>
               )}
 
-              {/* ── SETUP TAB ── */}
               {tab === 'setup' && (
                 <motion.div key="setup"
-                  initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }}
-                  transition={{ duration: 0.16 }}
+                  variants={TAB_LIST} initial="hidden" animate="visible"
+                  exit={{ opacity: 0, y: -8, transition: { duration: 0.14 } }}
                   style={{ display: 'flex', flexDirection: 'column', gap: 6 }}
                 >
-                  <VehicleCard
-                    mass={vehicle.mass} regenEfficiency={vehicle.regenEfficiency}
-                    onMassChange={(mass) => onVehicleChange({ mass })}
-                    onRegenChange={(regenEfficiency) => onVehicleChange({ regenEfficiency })}
-                  />
-                  <MetricCard label={t.sidebar.mghPenalty} value={`${metrics.energyPenaltyKWh.toFixed(3)} kWh`}
-                    subValue={`${metrics.totalElevationGain}m ${t.sidebar.gain}`} color="#F59E0B" delay={0.08} />
-                  <MetricCard label={t.sidebar.regenOpp} value={`${metrics.totalElevationLoss}m`} color="#00E676" delay={0.12} />
+                  <motion.div variants={TAB_ITEM} layout>
+                    <VehicleCard
+                      mass={vehicle.mass} regenEfficiency={vehicle.regenEfficiency}
+                      onMassChange={(mass) => onVehicleChange({ mass })}
+                      onRegenChange={(regenEfficiency) => onVehicleChange({ regenEfficiency })}
+                    />
+                  </motion.div>
+                  <motion.div variants={TAB_ITEM} layout>
+                    <MetricCard label={t.sidebar.mghPenalty} value={`${metrics.energyPenaltyKWh.toFixed(3)} kWh`}
+                      subValue={`${metrics.totalElevationGain}m ${t.sidebar.gain}`} color="#F59E0B" />
+                  </motion.div>
+                  <motion.div variants={TAB_ITEM} layout>
+                    <MetricCard label={t.sidebar.regenOpp} value={`${metrics.totalElevationLoss}m`} color="#00E676" />
+                  </motion.div>
                 </motion.div>
               )}
 
@@ -365,20 +391,27 @@ function UnifiedRightPanel({
   );
 }
 
-// ─── DashboardPage ────────────────────────────────────────────────────────────
+// ─── DashboardPage ─────────────────────────────────────────────────────────────
 export function DashboardPage() {
-  const { theme } = useAppTheme();
-  const { dir } = useAppLanguage();
+  const { theme }      = useAppTheme();
+  const { dir }        = useAppLanguage();
 
-  const [booting,      setBooting]      = useState(true);
-  const [systemReady,  setSystemReady]  = useState(false);
-  const [vehicle,      setVehicle]      = useState<VehicleConfig>(DEFAULT_VEHICLE);
-  const [settingsOpen, setSettingsOpen] = useState(false);
-  const [elevIdx,      setElevIdx]      = useState(0);
-  const [activeConfig, setActiveConfig] = useState<AmmanRouteConfig | null>(null);
+  const [booting,       setBooting]       = useState(true);
+  const [systemReady,   setSystemReady]   = useState(false);
+  const [vehicle,       setVehicle]       = useState<VehicleConfig>(DEFAULT_VEHICLE);
+  const [settingsOpen,  setSettingsOpen]  = useState(false);
+  const [elevIdx,       setElevIdx]       = useState(0);
+  const [activeConfig,  setActiveConfig]  = useState<AmmanRouteConfig | null>(null);
   const [focusLocation, setFocusLocation] = useState<LatLng | null>(null);
-  const hasRoute = activeConfig !== null;
+  const [bladeOpen,     setBladeOpen]     = useState(true);
 
+  // Live GPS — AeroMarker
+  const [userPosition, setUserPosition] = useState<LatLng | null>(null);
+  const [userHeading,  setUserHeading]  = useState(0);
+  const [userSpeed,    setUserSpeed]    = useState(0);
+  const watchIdRef = useRef<number | null>(null);
+
+  const hasRoute = activeConfig !== null;
   const parallax = useParallax(7);
 
   const { isLoaded, loadError } = useJsApiLoader({
@@ -417,13 +450,39 @@ export function DashboardPage() {
     return [{ id: activeConfig!.id, path: realRoute.path }];
   }, [hasRoute, activeConfig, realRoute.path]);
 
+  // Ghost marker — elevation chart hover → map position
+  const ghostPosition = useMemo<LatLng | null>(() => {
+    if (!hasRoute || realRoute.path.length < 2 || elevationData.length < 2) return null;
+    const pathIdx = Math.floor((elevIdx / Math.max(elevationData.length - 1, 1)) * (realRoute.path.length - 1));
+    return realRoute.path[Math.min(pathIdx, realRoute.path.length - 1)] ?? null;
+  }, [hasRoute, elevIdx, elevationData.length, realRoute.path]);
+
+  // Live GPS watchPosition with enableHighAccuracy: true
+  useEffect(() => {
+    if (!navigator.geolocation) return;
+    watchIdRef.current = navigator.geolocation.watchPosition(
+      (pos) => {
+        setUserPosition({ lat: pos.coords.latitude, lng: pos.coords.longitude });
+        if (pos.coords.heading !== null) setUserHeading(pos.coords.heading ?? 0);
+        if (pos.coords.speed  !== null) setUserSpeed(pos.coords.speed   ?? 0);
+      },
+      (err) => console.warn('[EcoRoute] watchPosition error:', err.message),
+      { enableHighAccuracy: true, timeout: 15000, maximumAge: 500 },
+    );
+    return () => {
+      if (watchIdRef.current !== null) navigator.geolocation.clearWatch(watchIdRef.current);
+    };
+  }, []);
+
   const handleBootComplete  = useCallback(() => { setBooting(false); setTimeout(() => setSystemReady(true), 500); }, []);
   const handleVehicleChange = useCallback((update: Partial<VehicleConfig>) => setVehicle((prev) => ({ ...prev, ...update })), []);
   const handleClear         = useCallback(() => setActiveConfig(null), []);
   const handleConfigReady   = useCallback((cfg: AmmanRouteConfig) => setActiveConfig(cfg), []);
   const handleLocationPick  = useCallback((latlng: LatLng) => setFocusLocation(latlng), []);
+  const handleBladeToggle   = useCallback(() => setBladeOpen((v) => !v), []);
+  const handleElevIdx       = useCallback((i: number) => setElevIdx(i), []);
 
-  const bgColor = theme === 'light' ? '#F5F5F7' : '#050505';
+  const bgColor = theme === 'light' ? '#F0F0F3' : '#050505';
 
   return (
     <div style={{ position: 'fixed', inset: 0, background: bgColor, overflow: 'hidden' }}>
@@ -442,22 +501,24 @@ export function DashboardPage() {
         allPaths={allPaths}
         routeError={activeConfig ? realRoute.error : null}
         focusLocation={focusLocation}
+        userPosition={userPosition}
+        userHeading={userHeading}
+        userSpeed={userSpeed}
+        ghostPosition={ghostPosition}
       />
 
-      {/* Settings hub */}
+      {/* Settings */}
       <SettingsHub isOpen={settingsOpen} onClose={() => setSettingsOpen(false)} />
 
-      {/* ── UI panels (shown after boot) ──────────────────────────────────── */}
+      {/* UI panels */}
       <AnimatePresence>
         {!booting && (
           <>
-            {/* Mini status bar — top right */}
             <HUDStats
               systemReady={systemReady}
               onSettingsClick={() => setSettingsOpen((v) => !v)}
             />
 
-            {/* Bottom dock search */}
             <SearchPanel
               isLoaded={isLoaded}
               onConfigReady={handleConfigReady}
@@ -467,7 +528,7 @@ export function DashboardPage() {
               loading={realRoute.loading}
             />
 
-            {/* Unified right panel — always visible, adapts to route state */}
+            {/* Collapsible Side-Blade (spring 120/20) */}
             <UnifiedRightPanel
               hasRoute={hasRoute}
               activeConfig={activeConfig ?? DUMMY_CONFIG}
@@ -480,9 +541,11 @@ export function DashboardPage() {
               parallaxX={parallax.x}
               parallaxY={parallax.y}
               dir={dir}
+              isOpen={bladeOpen}
+              onToggle={handleBladeToggle}
             />
 
-            {/* Elevation chart — only when route active, floats above dock */}
+            {/* Elevation chart with ghost marker sync */}
             <AnimatePresence>
               {hasRoute && (
                 <ElevationChart
@@ -490,7 +553,7 @@ export function DashboardPage() {
                   data={elevationData}
                   metrics={metrics}
                   activeIndex={elevIdx}
-                  onIndexChange={setElevIdx}
+                  onIndexChange={handleElevIdx}
                 />
               )}
             </AnimatePresence>
