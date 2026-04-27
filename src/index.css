@@ -1,0 +1,613 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ─── Design Tokens ──────────────────────────────────────────────────────────
+   Background  #050505
+   Panel       rgba(255,255,255,0.04)
+   Border      rgba(255,255,255,0.08)
+   Text/90     rgba(255,255,255,0.90)
+   Text/50     rgba(255,255,255,0.50)
+   Text/28     rgba(255,255,255,0.28)
+   Accent Cyan #00D4FF  — routes, active states
+   Accent Em   #00E676  — positive / regen
+   Warn        #F59E0B  — energy penalty
+────────────────────────────────────────────────────────────────────────────── */
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html, body, #root {
+  height: 100%;
+  width: 100%;
+  overflow: hidden;
+  background: #050505;
+  color: rgba(255,255,255,0.90);
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* ─── Scrollbar ──────────────────────────────────────────────────────────── */
+::-webkit-scrollbar { width: 3px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 2px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.2); }
+
+/* ─── Typography ─────────────────────────────────────────────────────────── */
+.font-data {
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  font-feature-settings: 'tnum';
+}
+
+.text-label {
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(255,255,255,0.35);
+}
+
+.text-value {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 15px;
+  font-weight: 500;
+  color: rgba(255,255,255,0.90);
+  letter-spacing: -0.02em;
+}
+
+.text-value-lg {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 22px;
+  font-weight: 600;
+  letter-spacing: -0.03em;
+}
+
+.text-accent { color: #00D4FF; }
+.text-em     { color: #00E676; }
+.text-warn   { color: #F59E0B; }
+
+/* ─── Glassmorphism Layers ───────────────────────────────────────────────── */
+.panel {
+  backdrop-filter: blur(20px) saturate(160%);
+  -webkit-backdrop-filter: blur(20px) saturate(160%);
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.08);
+  box-shadow:
+    0 1px 0 rgba(255,255,255,0.06) inset,
+    0 20px 40px rgba(0,0,0,0.4);
+  /* GPU compositing — prevents layout thrash when many panels repaint together */
+  transform: translateZ(0);
+  will-change: background, border-color, box-shadow;
+}
+
+.panel-elevated {
+  backdrop-filter: blur(24px) saturate(180%);
+  -webkit-backdrop-filter: blur(24px) saturate(180%);
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.12);
+  box-shadow:
+    0 1px 0 rgba(255,255,255,0.08) inset,
+    0 24px 48px rgba(0,0,0,0.5);
+}
+
+.panel-active {
+  backdrop-filter: blur(24px) saturate(180%);
+  -webkit-backdrop-filter: blur(24px) saturate(180%);
+  background: rgba(0,212,255,0.06);
+  border: 1px solid rgba(0,212,255,0.22);
+  box-shadow:
+    0 1px 0 rgba(0,212,255,0.12) inset,
+    0 0 0 1px rgba(0,212,255,0.06),
+    0 20px 40px rgba(0,0,0,0.4);
+}
+
+.panel-tooltip {
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  background: rgba(10,10,10,0.85);
+  border: 1px solid rgba(255,255,255,0.1);
+  box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+}
+
+/* ─── Divider ────────────────────────────────────────────────────────────── */
+.divider {
+  height: 1px;
+  background: rgba(255,255,255,0.07);
+}
+
+/* ─── Keyframes ──────────────────────────────────────────────────────────── */
+
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes routeDraw {
+  from { stroke-dashoffset: 2000; }
+  to   { stroke-dashoffset: 0; }
+}
+
+@keyframes pulseRing {
+  0%   { transform: scale(1);   opacity: 0.7; }
+  70%  { transform: scale(1.8); opacity: 0; }
+  100% { transform: scale(1.8); opacity: 0; }
+}
+
+@keyframes breathe {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.4; }
+}
+
+@keyframes flowDash {
+  from { stroke-dashoffset: 60; }
+  to   { stroke-dashoffset: -60; }
+}
+
+@keyframes shimmer {
+  from { background-position: -400px 0; }
+  to   { background-position: 400px 0; }
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+
+/* ─── Transition Utilities ───────────────────────────────────────────────── */
+.transition-panel {
+  transition: background 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.transition-fast {
+  transition: all 0.15s ease;
+}
+
+/* ─── Map Layer ──────────────────────────────────────────────────────────── */
+.map-fullscreen {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+}
+
+.map-vignette {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 1;
+  background:
+    radial-gradient(ellipse 80% 80% at 50% 50%, transparent 40%, rgba(5,5,5,0.55) 100%),
+    linear-gradient(to right, rgba(5,5,5,0.4) 0%, transparent 20%, transparent 80%, rgba(5,5,5,0.4) 100%),
+    linear-gradient(to bottom, rgba(5,5,5,0.3) 0%, transparent 15%, transparent 85%, rgba(5,5,5,0.3) 100%);
+}
+
+/* ─── Floating Panel Layout ──────────────────────────────────────────────── */
+.float-left {
+  position: fixed;
+  left: 16px;
+  top: 16px;
+  bottom: 160px;
+  z-index: 10;
+}
+
+.float-right {
+  position: fixed;
+  right: 16px;
+  top: 16px;
+  bottom: 160px;
+  z-index: 10;
+}
+
+.float-top-center {
+  position: fixed;
+  top: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 10;
+}
+
+.float-bottom {
+  position: fixed;
+  bottom: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 10;
+}
+
+/* ─── Accent Glow ────────────────────────────────────────────────────────── */
+.glow-cyan {
+  box-shadow: 0 0 0 1px rgba(0,212,255,0.15), 0 0 20px rgba(0,212,255,0.08);
+}
+
+.glow-em {
+  box-shadow: 0 0 0 1px rgba(0,230,118,0.15), 0 0 20px rgba(0,230,118,0.06);
+}
+
+/* ─── Status Indicator ───────────────────────────────────────────────────── */
+.status-live {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #00E676;
+  box-shadow: 0 0 0 2px rgba(0,230,118,0.2);
+  animation: breathe 2s ease-in-out infinite;
+}
+
+/* ─── Route Active Dot ───────────────────────────────────────────────────── */
+.route-dot {
+  position: relative;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #00D4FF;
+  flex-shrink: 0;
+}
+
+.route-dot::after {
+  content: '';
+  position: absolute;
+  inset: -4px;
+  border-radius: 50%;
+  border: 1px solid rgba(0,212,255,0.4);
+  animation: pulseRing 2.4s ease-out infinite;
+}
+
+/* ─── Progress Bar ───────────────────────────────────────────────────────── */
+.progress-track {
+  height: 2px;
+  background: rgba(255,255,255,0.06);
+  border-radius: 1px;
+  overflow: hidden;
+}
+
+.progress-fill {
+  height: 100%;
+  border-radius: 1px;
+  background: linear-gradient(90deg, #00D4FF, #00E676);
+  transition: width 0.8s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+/* ─── Shimmer Skeleton ───────────────────────────────────────────────────── */
+.skeleton {
+  background: linear-gradient(
+    90deg,
+    rgba(255,255,255,0.04) 0px,
+    rgba(255,255,255,0.08) 200px,
+    rgba(255,255,255,0.04) 400px
+  );
+  background-size: 400px 100%;
+  animation: shimmer 1.4s linear infinite;
+}
+
+/* ─── Range Input ────────────────────────────────────────────────────────── */
+input[type='range'] {
+  -webkit-appearance: none;
+  appearance: none;
+  height: 2px;
+  background: rgba(255,255,255,0.1);
+  border-radius: 1px;
+  outline: none;
+  cursor: pointer;
+}
+
+input[type='range']::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 12px;
+  height: 12px;
+  background: #ffffff;
+  border-radius: 50%;
+  cursor: pointer;
+  box-shadow: 0 0 0 2px rgba(255,255,255,0.15), 0 2px 8px rgba(0,0,0,0.4);
+  transition: transform 0.15s ease;
+}
+
+input[type='range']::-webkit-slider-thumb:hover {
+  transform: scale(1.15);
+}
+
+/* ─── Recharts ───────────────────────────────────────────────────────────── */
+.recharts-wrapper .recharts-surface { overflow: visible; }
+.recharts-tooltip-wrapper { outline: none !important; }
+
+/* ─── Boot Screen ────────────────────────────────────────────────────────── */
+.boot-screen {
+  position: fixed;
+  inset: 0;
+  background: #050505;
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  gap: 32px;
+}
+
+/* ─── Elevation Float ────────────────────────────────────────────────────── */
+.elevation-float {
+  position: fixed;
+  bottom: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 10;
+  width: min(700px, calc(100vw - 32px));
+}
+
+/* ─── Map Fallback Grid ──────────────────────────────────────────────────── */
+.map-grid {
+  background-image:
+    linear-gradient(rgba(255,255,255,0.025) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,255,255,0.025) 1px, transparent 1px);
+  background-size: 48px 48px;
+}
+
+/* ─── AI Copilot ─────────────────────────────────────────────────────────── */
+@keyframes cursorBlink {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0; }
+}
+
+/* ─── Compass ────────────────────────────────────────────────────────────── */
+@keyframes compassGlow {
+  0%, 100% { filter: drop-shadow(0 0 2px rgba(0,212,255,0.3)); }
+  50%       { filter: drop-shadow(0 0 6px rgba(0,212,255,0.6)); }
+}
+
+/* ─── Sonar Ping ─────────────────────────────────────────────────────────── */
+@keyframes sonarPing {
+  0%   { transform: scale(0.5); opacity: 0.9; }
+  100% { transform: scale(3.5); opacity: 0; }
+}
+
+.sonar-ring {
+  animation: sonarPing 1.4s ease-out forwards;
+}
+
+/* ─── Route Scan Line ────────────────────────────────────────────────────── */
+@keyframes routeScan {
+  from { top: -2px; }
+  to   { top: 102%; }
+}
+
+/* ─── Panel 3D perspective container ────────────────────────────────────── */
+.parallax-container {
+  perspective: 1200px;
+  transform-style: preserve-3d;
+}
+
+/* ─── Loading data indicator ─────────────────────────────────────────────── */
+.api-loading-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 10px;
+  border-radius: 20px;
+  background: rgba(0,212,255,0.06);
+  border: 1px solid rgba(0,212,255,0.15);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 9px;
+  color: rgba(0,212,255,0.5);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+/* ─── Gemini gradient text ───────────────────────────────────────────────── */
+.gemini-badge {
+  background: linear-gradient(90deg, #00D4FF, #00E676);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  font-size: 9px;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   TACTICAL LIGHT MODE  ·  Apple Human Interface Guidelines
+   Background  #F5F5F7  (Apple System Background)
+   Panel       rgba(255,255,255,0.72)  blur(28px) saturate(180%)
+   Text        #1D1D1F  /  #6E6E73  /  #86868B
+   Class .theme-light is toggled on <html> by AppContext
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+html.theme-light,
+html.theme-light body,
+html.theme-light #root {
+  background: #F5F5F7;
+  color: #1D1D1F;
+}
+
+html.theme-light .panel {
+  backdrop-filter: blur(28px) saturate(180%);
+  -webkit-backdrop-filter: blur(28px) saturate(180%);
+  background: rgba(255, 255, 255, 0.72);
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.95) inset,
+    0 4px 24px rgba(0, 0, 0, 0.06),
+    0 1px 4px rgba(0, 0, 0, 0.04);
+}
+
+html.theme-light .panel-elevated {
+  backdrop-filter: blur(32px) saturate(200%);
+  -webkit-backdrop-filter: blur(32px) saturate(200%);
+  background: rgba(255, 255, 255, 0.82);
+  border: 1px solid rgba(0, 0, 0, 0.09);
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.98) inset,
+    0 8px 32px rgba(0, 0, 0, 0.08),
+    0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+html.theme-light .panel-active {
+  backdrop-filter: blur(28px) saturate(180%);
+  -webkit-backdrop-filter: blur(28px) saturate(180%);
+  background: rgba(0, 212, 255, 0.06);
+  border: 1px solid rgba(0, 212, 255, 0.28);
+  box-shadow:
+    0 1px 0 rgba(0, 212, 255, 0.12) inset,
+    0 4px 20px rgba(0, 0, 0, 0.05);
+}
+
+html.theme-light .panel-tooltip {
+  background: rgba(255, 255, 255, 0.92);
+  border: 1px solid rgba(0, 0, 0, 0.09);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+}
+
+html.theme-light .text-label {
+  color: #6E6E73;
+}
+
+html.theme-light .text-value,
+html.theme-light .text-value-lg {
+  color: #1D1D1F;
+}
+
+html.theme-light .font-data {
+  color: #1D1D1F;
+}
+
+html.theme-light .divider {
+  background: rgba(0, 0, 0, 0.08);
+}
+
+html.theme-light .progress-track {
+  background: rgba(0, 0, 0, 0.08);
+}
+
+html.theme-light .boot-screen {
+  background: #F5F5F7;
+}
+
+html.theme-light .map-vignette {
+  background:
+    radial-gradient(ellipse 80% 80% at 50% 50%, transparent 40%, rgba(245,245,247,0.45) 100%),
+    linear-gradient(to right,  rgba(245,245,247,0.3) 0%, transparent 20%, transparent 80%, rgba(245,245,247,0.3) 100%),
+    linear-gradient(to bottom, rgba(245,245,247,0.25) 0%, transparent 15%, transparent 85%, rgba(245,245,247,0.25) 100%);
+}
+
+html.theme-light .map-grid {
+  background-color: #F5F5F7;
+  background-image:
+    linear-gradient(rgba(0, 0, 0, 0.05) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0, 0, 0, 0.05) 1px, transparent 1px);
+}
+
+html.theme-light ::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.14);
+}
+
+html.theme-light ::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 0, 0, 0.22);
+}
+
+html.theme-light .skeleton {
+  background: linear-gradient(
+    90deg,
+    rgba(0, 0, 0, 0.04) 0px,
+    rgba(0, 0, 0, 0.07) 200px,
+    rgba(0, 0, 0, 0.04) 400px
+  );
+  background-size: 400px 100%;
+}
+
+html.theme-light input[type='range'] {
+  background: rgba(0, 0, 0, 0.12);
+}
+
+html.theme-light input[type='range']::-webkit-slider-thumb {
+  background: #1D1D1F;
+  box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.1), 0 2px 6px rgba(0, 0, 0, 0.2);
+}
+
+/* Button / interactive resets in light mode */
+html.theme-light button {
+  color: inherit;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   RTL SUPPORT
+   dir="rtl" is set on <html> by AppContext when language === 'ar'
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+[dir="rtl"] .font-data {
+  letter-spacing: 0;
+}
+
+[dir="rtl"] .text-label {
+  letter-spacing: 0.04em;
+}
+
+/* Flip fixed-position utility classes for RTL */
+[dir="rtl"] .float-left {
+  left:  auto;
+  right: 16px;
+}
+
+[dir="rtl"] .float-right {
+  right: auto;
+  left:  16px;
+}
+
+/* ─── Search input placeholder ──────────────────────────────────────────── */
+.eco-search-input::placeholder {
+  color: rgba(255, 255, 255, 0.28);
+}
+html.theme-light .eco-search-input::placeholder {
+  color: rgba(0, 0, 0, 0.28);
+}
+.eco-search-input {
+  caret-color: #00D4FF;
+}
+
+/* ─── Google Places Autocomplete (PAC) dropdown ──────────────────────────── */
+.pac-container {
+  backdrop-filter: blur(20px) saturate(160%) !important;
+  -webkit-backdrop-filter: blur(20px) saturate(160%) !important;
+  background: rgba(10, 10, 12, 0.92) !important;
+  border: 1px solid rgba(255, 255, 255, 0.09) !important;
+  border-radius: 14px !important;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.6) !important;
+  margin-top: 6px;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  overflow: hidden;
+  z-index: 9999 !important;
+}
+.pac-item {
+  background: transparent !important;
+  border: none !important;
+  border-top: 1px solid rgba(255, 255, 255, 0.05) !important;
+  color: rgba(255, 255, 255, 0.68) !important;
+  font-size: 11px !important;
+  padding: 9px 14px !important;
+  cursor: pointer;
+  transition: background 0.12s;
+}
+.pac-item:first-child { border-top: none !important; }
+.pac-item:hover,
+.pac-item-selected {
+  background: rgba(255, 255, 255, 0.06) !important;
+}
+.pac-item-query {
+  color: rgba(255, 255, 255, 0.88) !important;
+  font-size: 11px !important;
+}
+.pac-icon   { display: none !important; }
+.pac-logo::after { display: none !important; }
+/* Light mode PAC */
+html.theme-light .pac-container {
+  background: rgba(252, 252, 254, 0.96) !important;
+  border: 1px solid rgba(0, 0, 0, 0.08) !important;
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.12) !important;
+}
+html.theme-light .pac-item {
+  border-top: 1px solid rgba(0, 0, 0, 0.06) !important;
+  color: #3A3A3C !important;
+}
+html.theme-light .pac-item:hover,
+html.theme-light .pac-item-selected {
+  background: rgba(0, 0, 0, 0.04) !important;
+}
+html.theme-light .pac-item-query {
+  color: #1D1D1F !important;
+}
