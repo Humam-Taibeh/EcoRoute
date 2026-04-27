@@ -138,4 +138,34 @@ function getFallbackInsight(
   const en: Record<string, string[]> = {
     'route-alpha': [
       `${metrics.regenRecoveryKWh.toFixed(3)} kWh recaptured on the Jabal Amman descent — that's the EV tax refund Rainbow Street owes you.`,
-      `The 7th Circle
+      `The 7th Circle tried to drain you. Net draw: ${metrics.netEnergyKWh.toFixed(3)} kWh. You win.`,
+      `${metrics.co2SavedKg.toFixed(2)} kg CO₂ saved vs petrol — the eco score doesn't lie: ${metrics.ecoScore.toFixed(0)}/100.`,
+    ],
+    'route-beta': [
+      `Abdoun Bridge handed you ${metrics.regenRecoveryKWh.toFixed(3)} kWh for free. That's the most efficient descent in West Amman.`,
+      `7th Circle summit: ${metrics.energyPenaltyKWh.toFixed(3)} kWh cost, eco score still ${metrics.ecoScore.toFixed(0)}/100. Gravity is on your side on the way down.`,
+      `Sweifieh to Abdali: net ${metrics.netEnergyKWh.toFixed(3)} kWh — the city's best kept efficiency secret.`,
+    ],
+  };
+
+  const ar: Record<string, string[]> = {
+    'route-alpha': [
+      `يا زلمة، ${metrics.regenRecoveryKWh.toFixed(3)} kWh رجعولك من نزلة جبل عمّان — هيك بتكسر فاتورة البنزين بدون ما تحكي.`,
+      `والله الدوار السابع ما قدر عليك — صافي الطاقة ${metrics.netEnergyKWh.toFixed(3)} kWh بس. يا كبير هاد إنجاز!`,
+      `${metrics.co2SavedKg.toFixed(2)} كغ CO₂ وفّرت عالبيئة — الكوكب بيقولك شكراً يا زلمة.`,
+    ],
+    'route-beta': [
+      `يا كبير، جسر عبدون أعطاك ${metrics.regenRecoveryKWh.toFixed(3)} kWh مجاناً — هيك بتطلع الفاتورة بكرة.`,
+      `الدوار السابع يا زلمة — ${metrics.energyPenaltyKWh.toFixed(3)} kWh عشان تطلعه، بس نقاط البيئة ${metrics.ecoScore.toFixed(0)}/100. والله ما في أحسن منك!`,
+      `الصويفية لعبدالي: ${metrics.netEnergyKWh.toFixed(3)} kWh صافي — يلا هاي أقوى وجبة مجانية بعمّان.`,
+    ],
+  };
+
+  const pool = (language === 'ar' ? ar : en)[route.id] ?? [
+    language === 'ar'
+      ? `نقاط البيئة ${metrics.ecoScore.toFixed(0)}/100 — يا زلمة، حتى جبال عمّان صارت تشتغل معك.`
+      : `Eco score ${metrics.ecoScore.toFixed(0)}/100 — even Amman's hills are working for you now.`,
+  ];
+
+  return pool[Math.floor(Math.random() * pool.length)];
+}

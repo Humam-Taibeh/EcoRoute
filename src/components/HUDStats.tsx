@@ -219,4 +219,14 @@ export function HUDStats({
 }) {
   return (
     <>
-      <BrandBar systemReady={systemReady} ro
+      <BrandBar systemReady={systemReady} routeName={routeName} onSettingsClick={onSettingsClick} />
+      <AnimatePresence>
+        {hasRoute && (
+          <motion.div key="chips" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+            <EcoChips metrics={metrics} />
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </>
+  );
+}

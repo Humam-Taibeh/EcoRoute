@@ -205,4 +205,28 @@ export const T = {
       profile:     'الملف الشخصي',
       language:    'اللغة',
       appearance:  'المظهر',
-      dark:        'داك
+      dark:        'داكن',
+      light:       'فاتح',
+      tapToEdit:   'اضغط للتعديل · اضغط على الصورة لتغييرها',
+      arabicNote:  'واجهة عربية · Gemini يرد باللهجة الأردنية',
+      lightNote:   'وضع الضوء التكتيكي · عرض عالي الجودة',
+      footer:      'EcoRoute v2.0 · مركز ملاحة عمّان',
+    },
+    offline: {
+      badge:    'وضع عدم الاتصال التكتيكي',
+      fallback: 'يعمل على بيانات تضاريس عمّان · محرك الفيزياء نشط',
+    },
+    metrics: {
+      netEnergy:    'الطاقة الصافية',
+      regenRecovery:'استرداد الطاقة',
+      co2Saved:     'CO₂ موفّر',
+    },
+  },
+} satisfies Record<Language, unknown>;
+
+export type Translations = typeof T.en;
+
+export function useT(): Translations {
+  const { language } = useApp();
+  return T[language] as unknown as Translations;
+}

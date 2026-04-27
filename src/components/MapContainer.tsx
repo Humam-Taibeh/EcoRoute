@@ -845,4 +845,12 @@ export function MapContainer({
           <svg width={34} height={34} viewBox="0 0 34 34">
             <line x1={17} y1={0} x2={17} y2={13} stroke="rgba(255,255,255,0.2)" strokeWidth={1} />
             <line x1={17} y1={21} x2={17} y2={34} stroke="rgba(255,255,255,0.2)" strokeWidth={1} />
-            <line x1={0} y1={17} x2={13} y2={17} stroke="rg
+            <line x1={0} y1={17} x2={13} y2={17} stroke="rgba(255,255,255,0.2)" strokeWidth={1} />
+            <line x1={21} y1={17} x2={34} y2={17} stroke="rgba(255,255,255,0.2)" strokeWidth={1} />
+            <circle cx={17} cy={17} r={2.5} fill="none" stroke="rgba(255,255,255,0.25)" strokeWidth={1} />
+          </svg>
+        </div>
+      )}
+    </motion.div>
+  );
+}

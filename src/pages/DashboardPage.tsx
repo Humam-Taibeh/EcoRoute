@@ -534,4 +534,34 @@ export function DashboardPage() {
                     metrics={metrics}
                     activeConfig={activeConfig!}
                     parallaxX={parallax.x}
-                    p
+                    parallaxY={parallax.y}
+                    dir={dir}
+                  />
+
+                  <ElevationChart
+                    key="ec"
+                    data={elevationData}
+                    metrics={metrics}
+                    activeIndex={elevIdx}
+                    onIndexChange={setElevIdx}
+                  />
+                </>
+              )}
+            </AnimatePresence>
+
+            {/* AI copilot — always visible: welcome tip or route insight */}
+            <AICopilot
+              route={activeConfig}
+              metrics={metrics}
+              vehicle={vehicle}
+              distance={realRoute.distance || 13}
+              parallaxX={parallax.x}
+              parallaxY={parallax.y}
+            />
+          </>
+        )}
+      </AnimatePresence>
+
+    </div>
+  );
+}

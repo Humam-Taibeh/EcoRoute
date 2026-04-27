@@ -215,4 +215,32 @@ export function AICopilot({
                 style={{ display: 'flex', flexDirection: 'column', gap: 6 }}
               >
                 {[80, 95, 60].map((w, i) => (
-                  <div key={i} className="skelet
+                  <div key={i} className="skeleton" style={{ height: 10, borderRadius: 4, width: `${w}%` }} />
+                ))}
+              </motion.div>
+            )}
+            {insight && (
+              <motion.div
+                key={insight.slice(0, 20)}
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ duration: 0.2 }}
+                style={{ fontSize: 12, lineHeight: 1.6, color: tc.aiInsight }}
+              >
+                <TypedText text={insight} />
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
+
+        {/* Gemini badge */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginTop: 10 }}>
+          <div style={{ width: 4, height: 4, borderRadius: '50%', background: '#00E676', animation: 'breathe 2s ease-in-out infinite' }} />
+          <span style={{ fontSize: 9, color: tc.aiBadge, letterSpacing: '0.08em' }}>
+            {t.ai.badge}
+          </span>
+        </div>
+      </div>
+    </motion.div>
+  );
+}
