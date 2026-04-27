@@ -1,8 +1,8 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { memo, useState, useEffect, useCallback, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Sparkles, RefreshCw, Bot } from 'lucide-react';
 import { getEcoInsight, getWelcomeInsight } from '../services/geminiService';
-import { useApp, useThemeColors } from '../context/AppContext';
+import { useAppLanguage, useAppProfile, useThemeColors } from '../context/AppContext';
 import { useT } from '../i18n';
 import type { EcoMetrics, AmmanRouteConfig, VehicleConfig } from '../types';
 
@@ -57,17 +57,21 @@ interface AICopilotProps {
   distance:   number;
   parallaxX?: number;
   parallaxY?: number;
+  /** When true, renders inline without position:fixed (for embedding in panels) */
+  embedded?:  boolean;
 }
 
-export function AICopilot({
+export const AICopilot = memo(function AICopilot({
   route,
   metrics,
   vehicle,
   distance,
   parallaxX = 0,
   parallaxY = 0,
+  embedded  = false,
 }: AICopilotProps) {
-  const { language } = useApp();
+  const { language } = useAppLanguage();
+  const { profile } = useAppProfile();
   const tc = useThemeColors();
   const t  = useT();
   const [insight, setInsight] = useState<string>('');
@@ -84,14 +88,14 @@ export function AICopilot({
     setError(false);
     setInsight('');
     try {
-      const text = await getWelcomeInsight(language);
+      const text = await getWelcomeInsight(language, profile.name);
       if (fetchId.current === myId) setInsight(text.trim());
     } catch {
       if (fetchId.current === myId) setInsight(t.welcome.subtitle);
     } finally {
       if (fetchId.current === myId) setLoading(false);
     }
-  }, [language, t.welcome.subtitle]);
+  }, [language, profile.name, t.welcome.subtitle]);
 
   // ── Route insight mode ────────────────────────────────────────────────────
   const fetchInsight = useCallback(async (forceRefresh = false) => {
@@ -107,7 +111,7 @@ export function AICopilot({
     setInsight('');
 
     try {
-      const text = await getEcoInsight(route, metrics, distance, vehicle.mass, vehicle.regenEfficiency, language);
+      const text = await getEcoInsight(route, metrics, distance, vehicle.mass, vehicle.regenEfficiency, language, profile.name);
       if (fetchId.current === myId) setInsight(text.trim());
     } catch {
       if (fetchId.current === myId) {
@@ -117,7 +121,7 @@ export function AICopilot({
     } finally {
       if (fetchId.current === myId) setLoading(false);
     }
-  }, [route, metrics, distance, vehicle, loading, insight, language, t.ai.error]);
+  }, [route, metrics, distance, vehicle, loading, insight, language, profile.name, t.ai.error]);
 
   // Trigger appropriate fetch when route or language changes
   useEffect(() => {
@@ -142,29 +146,15 @@ export function AICopilot({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [metricsKey]);
 
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ delay: 1.4, ...SPRING }}
+  const innerPanel = (
+    <div
+      className="panel"
       style={{
-        position: 'fixed',
-        bottom: 170,
-        left: 16,
-        width: 260,
-        zIndex: 10,
-        transform: `translate3d(${parallaxX * -1.4}px, ${parallaxY * -0.8}px, 0)`,
-        transition: 'transform 0.1s linear',
+        borderRadius: 14,
+        padding: '14px 16px',
+        borderColor: error ? 'rgba(239,68,68,0.2)' : undefined,
       }}
     >
-      <div
-        className="panel"
-        style={{
-          borderRadius: 14,
-          padding: '14px 16px',
-          borderColor: error ? 'rgba(239,68,68,0.2)' : undefined,
-        }}
-      >
         {/* Header */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
@@ -240,7 +230,37 @@ export function AICopilot({
             {t.ai.badge}
           </span>
         </div>
-      </div>
+    </div>
+  );
+
+  if (embedded) {
+    return (
+      <motion.div
+        initial={{ opacity: 0, y: 8 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.22, ...SPRING }}
+      >
+        {innerPanel}
+      </motion.div>
+    );
+  }
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: 1.4, ...SPRING }}
+      style={{
+        position: 'fixed',
+        bottom: 170,
+        left: 16,
+        width: 260,
+        zIndex: 10,
+        transform: `translate3d(${parallaxX * -1.4}px, ${parallaxY * -0.8}px, 0)`,
+        transition: 'transform 0.1s linear',
+      }}
+    >
+      {innerPanel}
     </motion.div>
   );
-}
+});

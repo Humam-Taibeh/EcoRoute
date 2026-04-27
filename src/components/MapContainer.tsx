@@ -1,9 +1,9 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { memo, useCallback, useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { GoogleMap, OverlayView } from '@react-google-maps/api';
 import { MAP_STYLE, MAP_STYLE_LIGHT, DEFAULT_CENTER, DEFAULT_ZOOM } from '../data/mockRoutes';
 import { CompassRose } from './CompassRose';
-import { useApp } from '../context/AppContext';
+import { useAppTheme } from '../context/AppContext';
 import { useT } from '../i18n';
 import type { LatLng, AmmanRouteConfig } from '../types';
 
@@ -401,7 +401,7 @@ interface FallbackMapProps {
 
 function FallbackMap({ routeName, loadError, keyMissing = false, routeError = null }: FallbackMapProps) {
   const t = useT();
-  const { theme } = useApp();
+  const { theme } = useAppTheme();
   const { code, color } = classifyError(loadError, keyMissing, routeError);
   const { title, steps } = FIX_STEPS[code] ?? FIX_STEPS.LOADING;
   const fallbackBg = theme === 'light' ? '#F0F0F2' : '#070707';
@@ -628,22 +628,25 @@ interface MapContainerProps {
   activePath: LatLng[];
   allPaths: { id: string; path: LatLng[] }[];
   routeError?: string | null;
+  focusLocation?: LatLng | null;
   onHeadingChange?: (h: number) => void;
 }
 
-export function MapContainer({
+export const MapContainer = memo(function MapContainer({
   isLoaded,
   loadError,
   activeRouteConfig,
   activePath,
   allPaths,
   routeError = null,
+  focusLocation = null,
   onHeadingChange,
 }: MapContainerProps) {
   const mapRef = useRef<google.maps.Map | null>(null);
   const overlayRef = useRef<IGlowRouteOverlay | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
-  const [cursor, setCursor] = useState<{ x: number; y: number } | null>(null);
+  const cursorRef = useRef<HTMLDivElement>(null);
+  const mouseRafRef = useRef<number | null>(null);
   const [scanning, setScanning] = useState(false);
   const [compassHeading, setCompassHeading] = useState(0);
   const prevRouteId = useRef('');
@@ -687,7 +690,7 @@ export function MapContainer({
     isAnimating.current = false;
   }, []);
 
-  const { theme } = useApp();
+  const { theme } = useAppTheme();
   // Keep a ref so onMapLoad always reads the latest theme without being in deps
   const themeRef = useRef(theme);
   themeRef.current = theme;
@@ -697,7 +700,7 @@ export function MapContainer({
     if (!mapRef.current) return;
     mapRef.current.setOptions({
       styles:          theme === 'light' ? MAP_STYLE_LIGHT : MAP_STYLE,
-      backgroundColor: theme === 'light' ? '#F5F5F7'       : '#050505',
+      backgroundColor: theme === 'light' ? '#ECEDEF'       : '#050505',
     });
   }, [theme]);
 
@@ -710,7 +713,7 @@ export function MapContainer({
     // Apply current theme style immediately (read via ref — no stale closure)
     map.setOptions({
       styles:          themeRef.current === 'light' ? MAP_STYLE_LIGHT : MAP_STYLE,
-      backgroundColor: themeRef.current === 'light' ? '#F5F5F7'       : '#050505',
+      backgroundColor: themeRef.current === 'light' ? '#ECEDEF'       : '#050505',
     });
 
     // Listen for heading changes → update compass
@@ -746,9 +749,34 @@ export function MapContainer({
     }
   }, [activePath, activeRouteConfig.id, isLoaded, runCinematic]);
 
+  // ── Precision geolocation focus ───────────────────────────────────────────
+  useEffect(() => {
+    if (!mapRef.current || !isLoaded || !focusLocation) return;
+    const map = mapRef.current;
+    const center = map.getCenter();
+    const zoom = map.getZoom() ?? 13;
+    const heading = map.getHeading() ?? 0;
+    const tilt = map.getTilt() ?? 0;
+    if (!center) return;
+
+    void animateCameraTo(
+      map,
+      { zoom, lat: center.lat(), lng: center.lng(), heading, tilt },
+      {
+        zoom: Math.max(zoom, 16.5),
+        lat: focusLocation.lat,
+        lng: focusLocation.lng,
+        heading,
+        tilt: Math.min(tilt, 35),
+      },
+      900,
+    );
+  }, [focusLocation, isLoaded]);
+
   // ── Cleanup on unmount ────────────────────────────────────────────────────
   useEffect(() => {
     return () => {
+      if (mouseRafRef.current) cancelAnimationFrame(mouseRafRef.current);
       if (overlayRef.current) {
         overlayRef.current.setMap(null);
         overlayRef.current = null;
@@ -758,9 +786,16 @@ export function MapContainer({
 
   // ── Mouse crosshair ───────────────────────────────────────────────────────
   const onMouseMove = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
-    if (!containerRef.current) return;
+    if (!containerRef.current || !cursorRef.current) return;
     const r = containerRef.current.getBoundingClientRect();
-    setCursor({ x: e.clientX - r.left, y: e.clientY - r.top });
+    const x = e.clientX - r.left;
+    const y = e.clientY - r.top;
+    if (mouseRafRef.current) cancelAnimationFrame(mouseRafRef.current);
+    mouseRafRef.current = requestAnimationFrame(() => {
+      if (!cursorRef.current) return;
+      cursorRef.current.style.opacity = '1';
+      cursorRef.current.style.transform = `translate3d(${x}px, ${y}px, 0)`;
+    });
   }, []);
 
   const keyMissing = !GMAPS_KEY;
@@ -783,7 +818,9 @@ export function MapContainer({
       className="map-fullscreen"
       style={{ cursor: 'crosshair' }}
       onMouseMove={onMouseMove}
-      onMouseLeave={() => setCursor(null)}
+      onMouseLeave={() => {
+        if (cursorRef.current) cursorRef.current.style.opacity = '0';
+      }}
     >
       {showFallback ? (
         <FallbackMap
@@ -838,19 +875,27 @@ export function MapContainer({
       <CompassRose heading={compassHeading} />
 
       {/* Precision crosshair */}
-      {cursor && (
-        <div
-          style={{ position: 'absolute', left: cursor.x, top: cursor.y, transform: 'translate(-50%,-50%)', pointerEvents: 'none', zIndex: 9 }}
-        >
-          <svg width={34} height={34} viewBox="0 0 34 34">
-            <line x1={17} y1={0} x2={17} y2={13} stroke="rgba(255,255,255,0.2)" strokeWidth={1} />
-            <line x1={17} y1={21} x2={17} y2={34} stroke="rgba(255,255,255,0.2)" strokeWidth={1} />
-            <line x1={0} y1={17} x2={13} y2={17} stroke="rgba(255,255,255,0.2)" strokeWidth={1} />
-            <line x1={21} y1={17} x2={34} y2={17} stroke="rgba(255,255,255,0.2)" strokeWidth={1} />
-            <circle cx={17} cy={17} r={2.5} fill="none" stroke="rgba(255,255,255,0.25)" strokeWidth={1} />
-          </svg>
-        </div>
-      )}
+      <div
+        ref={cursorRef}
+        style={{
+          position: 'absolute',
+          left: 0,
+          top: 0,
+          transform: 'translate3d(0, 0, 0)',
+          opacity: 0,
+          pointerEvents: 'none',
+          zIndex: 9,
+          transition: 'opacity 0.16s ease',
+        }}
+      >
+        <svg width={34} height={34} viewBox="0 0 34 34" style={{ transform: 'translate(-50%, -50%)' }}>
+          <line x1={17} y1={0} x2={17} y2={13} stroke="rgba(255,255,255,0.2)" strokeWidth={1} />
+          <line x1={17} y1={21} x2={17} y2={34} stroke="rgba(255,255,255,0.2)" strokeWidth={1} />
+          <line x1={0} y1={17} x2={13} y2={17} stroke="rgba(255,255,255,0.2)" strokeWidth={1} />
+          <line x1={21} y1={17} x2={34} y2={17} stroke="rgba(255,255,255,0.2)" strokeWidth={1} />
+          <circle cx={17} cy={17} r={2.5} fill="none" stroke="rgba(255,255,255,0.25)" strokeWidth={1} />
+        </svg>
+      </div>
     </motion.div>
   );
-}
+});

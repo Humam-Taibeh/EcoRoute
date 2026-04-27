@@ -1,4 +1,12 @@
-import { createContext, useContext, useState, useEffect, type ReactNode } from 'react';
+import {
+  createContext,
+  useContext,
+  useState,
+  useEffect,
+  useMemo,
+  useCallback,
+  type ReactNode,
+} from 'react';
 
 export type Language = 'en' | 'ar';
 export type Theme    = 'dark' | 'light';
@@ -19,6 +27,22 @@ interface AppCtxValue {
   updateProfile: (p: Partial<UserProfile>) => void;
 }
 
+interface LanguageCtxValue {
+  language: Language;
+  dir: Dir;
+  setLanguage: (l: Language) => void;
+}
+
+interface ThemeCtxValue {
+  theme: Theme;
+  setTheme: (t: Theme) => void;
+}
+
+interface ProfileCtxValue {
+  profile: UserProfile;
+  updateProfile: (p: Partial<UserProfile>) => void;
+}
+
 const AppContext = createContext<AppCtxValue>({
   language:      'en',
   theme:         'dark',
@@ -29,12 +53,33 @@ const AppContext = createContext<AppCtxValue>({
   updateProfile: () => {},
 });
 
+const LanguageContext = createContext<LanguageCtxValue>({
+  language: 'en',
+  dir: 'ltr',
+  setLanguage: () => {},
+});
+
+const ThemeContext = createContext<ThemeCtxValue>({
+  theme: 'dark',
+  setTheme: () => {},
+});
+
+const ProfileContext = createContext<ProfileCtxValue>({
+  profile: { name: 'Driver', avatar: null },
+  updateProfile: () => {},
+});
+
 export function AppProvider({ children }: { children: ReactNode }) {
   const [language, setLang]     = useState<Language>('en');
   const [theme, setThemeState]  = useState<Theme>('dark');
   const [profile, setProfile]   = useState<UserProfile>({ name: 'Humam', avatar: null });
 
   const dir: Dir = language === 'ar' ? 'rtl' : 'ltr';
+  const setLanguage = useCallback((next: Language) => setLang(next), []);
+  const setTheme = useCallback((next: Theme) => setThemeState(next), []);
+  const updateProfile = useCallback((p: Partial<UserProfile>) => {
+    setProfile((prev) => ({ ...prev, ...p }));
+  }, []);
 
   // Sync document direction + lang attribute
   useEffect(() => {
@@ -47,28 +92,55 @@ export function AppProvider({ children }: { children: ReactNode }) {
     document.documentElement.classList.toggle('theme-light', theme === 'light');
   }, [theme]);
 
+  const languageValue = useMemo(() => ({
+    language,
+    dir,
+    setLanguage,
+  }), [language, dir, setLanguage]);
+
+  const themeValue = useMemo(() => ({
+    theme,
+    setTheme,
+  }), [theme, setTheme]);
+
+  const profileValue = useMemo(() => ({
+    profile,
+    updateProfile,
+  }), [profile, updateProfile]);
+
+  const appValue = useMemo(() => ({
+    language,
+    theme,
+    dir,
+    profile,
+    setLanguage,
+    setTheme,
+    updateProfile,
+  }), [language, theme, dir, profile, setLanguage, setTheme, updateProfile]);
+
   return (
-    <AppContext.Provider value={{
-      language,
-      theme,
-      dir,
-      profile,
-      setLanguage: setLang,
-      setTheme:    setThemeState,
-      updateProfile: (p) => setProfile((prev) => ({ ...prev, ...p })),
-    }}>
-      {children}
-    </AppContext.Provider>
+    <LanguageContext.Provider value={languageValue}>
+      <ThemeContext.Provider value={themeValue}>
+        <ProfileContext.Provider value={profileValue}>
+          <AppContext.Provider value={appValue}>
+            {children}
+          </AppContext.Provider>
+        </ProfileContext.Provider>
+      </ThemeContext.Provider>
+    </LanguageContext.Provider>
   );
 }
 
 export const useApp = () => useContext(AppContext);
+export const useAppLanguage = () => useContext(LanguageContext);
+export const useAppTheme = () => useContext(ThemeContext);
+export const useAppProfile = () => useContext(ProfileContext);
 
 // ─── Theme-aware colour tokens ─────────────────────────────────────────────
 export function useThemeColors() {
-  const { theme } = useApp();
+  const { theme } = useAppTheme();
   const d = theme === 'dark';
-  return {
+  return useMemo(() => ({
     // Text
     textPrimary:   d ? 'rgba(255,255,255,0.90)' : '#1D1D1F',
     textSecondary: d ? 'rgba(255,255,255,0.55)' : '#6E6E73',
@@ -118,5 +190,5 @@ export function useThemeColors() {
     settingsBtnBorder: d ? 'rgba(255,255,255,0.09)' : 'rgba(0,0,0,0.1)',
     settingsGear: d ? 'rgba(255,255,255,0.38)' : 'rgba(0,0,0,0.38)',
     langIndicatorInactive: d ? 'rgba(255,255,255,0.25)' : 'rgba(0,0,0,0.28)',
-  } as const;
+  } as const), [d]);
 }

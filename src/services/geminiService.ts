@@ -11,7 +11,8 @@ function buildPrompt(
   distance:  number,
   mass:      number,
   regenEff:  number,
-  language:  Language
+  language:  Language,
+  userName:  string
 ): string {
   const topGrade = metrics.totalElevationGain > 200 ? 'steep' : 'moderate';
   const regenPct = ((metrics.regenRecoveryKWh / (metrics.energyPenaltyKWh + 0.001)) * 100).toFixed(0);
@@ -35,6 +36,7 @@ You know Amman's streets intimately: the brutal 7th Circle climb, the Abdoun bri
 Rainbow Street's winding drop from Jabal Amman, and the way Sweifieh sits between two hills.
 
 LANGUAGE INSTRUCTION: ${langInstruction}
+Address the user directly by name "${userName}" in your first sentence.
 
 Route: ${routeCtx}
 Distance: ${distance.toFixed(1)} km
@@ -57,17 +59,19 @@ export async function getEcoInsight(
   distance:  number,
   mass:      number,
   regenEff:  number,
-  language:  Language = 'en'
+  language:  Language = 'en',
+  userName = 'Driver'
 ): Promise<string> {
+  const safeName = normalizeName(userName);
   if (!GEMINI_KEY) {
-    return getFallbackInsight(route, metrics, language);
+    return getFallbackInsight(route, metrics, language, safeName);
   }
 
   const response = await fetch(API_URL, {
     method:  'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
-      contents: [{ parts: [{ text: buildPrompt(route, metrics, distance, mass, regenEff, language) }] }],
+      contents: [{ parts: [{ text: buildPrompt(route, metrics, distance, mass, regenEff, language, safeName) }] }],
       generationConfig: {
         temperature:      0.92,
         maxOutputTokens:  130,
@@ -83,7 +87,7 @@ export async function getEcoInsight(
 
   if (!response.ok) {
     console.warn('[EcoRoute] Gemini API error:', response.status);
-    return getFallbackInsight(route, metrics, language);
+    return getFallbackInsight(route, metrics, language, safeName);
   }
 
   const data = await response.json() as {
@@ -91,16 +95,17 @@ export async function getEcoInsight(
   };
 
   return data.candidates?.[0]?.content?.parts?.[0]?.text
-    ?? getFallbackInsight(route, metrics, language);
+    ?? getFallbackInsight(route, metrics, language, safeName);
 }
 
 // ─── Welcome / No-Route Insight ───────────────────────────────────────────────
-export async function getWelcomeInsight(language: Language): Promise<string> {
-  if (!GEMINI_KEY) return getWelcomeFallback(language);
+export async function getWelcomeInsight(language: Language, userName = 'Driver'): Promise<string> {
+  const safeName = normalizeName(userName);
+  if (!GEMINI_KEY) return getWelcomeFallback(language, safeName);
 
   const prompt = language === 'ar'
-    ? `أنت مساعد EcoRoute AI لمدينة عمّان. اكتب رسالة ترحيب قصيرة (جملة واحدة أو جملتان) باللهجة الأردنية العامية. تحدث عن توفير الطاقة وتضاريس عمّان الجبلية والمسارات البيئية. استخدم تعابير مثل "يا زلمة" أو "والله" أو "يا كبير".`
-    : `You are EcoRoute AI for Amman, Jordan. Write a one-line welcome message in sharp, witty English. Reference Amman's unique hilly topology (7th Circle, Abdoun, Jabal Amman) and real-time mgh physics. Be energetic and data-driven.`;
+    ? `أنت مساعد EcoRoute AI لمدينة عمّان. اكتب رسالة ترحيب قصيرة (جملة واحدة أو جملتان) باللهجة الأردنية العامية. خاطب المستخدم باسمه "${safeName}" من البداية. تحدث عن توفير الطاقة وتضاريس عمّان الجبلية والمسارات البيئية. استخدم تعابير مثل "يا زلمة" أو "والله" أو "يا كبير".`
+    : `You are EcoRoute AI for Amman, Jordan. Write a one-line welcome message in sharp, witty English. Address the user by name "${safeName}" in the opening. Reference Amman's unique hilly topology (7th Circle, Abdoun, Jabal Amman) and real-time mgh physics. Be energetic and data-driven.`;
 
   try {
     const response = await fetch(API_URL, {
@@ -115,25 +120,26 @@ export async function getWelcomeInsight(language: Language): Promise<string> {
         ],
       }),
     });
-    if (!response.ok) return getWelcomeFallback(language);
+    if (!response.ok) return getWelcomeFallback(language, safeName);
     const data = await response.json() as { candidates: { content: { parts: { text: string }[] } }[] };
-    return data.candidates?.[0]?.content?.parts?.[0]?.text?.trim() ?? getWelcomeFallback(language);
+    return data.candidates?.[0]?.content?.parts?.[0]?.text?.trim() ?? getWelcomeFallback(language, safeName);
   } catch {
-    return getWelcomeFallback(language);
+    return getWelcomeFallback(language, safeName);
   }
 }
 
-function getWelcomeFallback(language: Language): string {
+function getWelcomeFallback(language: Language, userName: string): string {
   return language === 'ar'
-    ? 'يا زلمة، أهلاً بك في EcoRoute — عمّان بتضاريسها الجبلية تعطيك طاقة مجانية من كل منحدر!'
-    : "Welcome to EcoRoute — Amman's hills are a free energy source. Enter your route and let the mgh engine do the math.";
+    ? `يا ${userName}، أهلاً بك في EcoRoute — عمّان بتضاريسها الجبلية تعطيك طاقة مجانية من كل منحدر!`
+    : `Hey ${userName}, welcome to EcoRoute — Amman's hills are a free energy source. Enter your route and let the mgh engine do the math.`;
 }
 
 // ─── Bilingual Fallback Insights ──────────────────────────────────────────────
 function getFallbackInsight(
   route:    AmmanRouteConfig,
   metrics:  EcoMetrics,
-  language: Language = 'en'
+  language: Language = 'en',
+  userName = 'Driver'
 ): string {
   const en: Record<string, string[]> = {
     'route-alpha': [
@@ -163,9 +169,14 @@ function getFallbackInsight(
 
   const pool = (language === 'ar' ? ar : en)[route.id] ?? [
     language === 'ar'
-      ? `نقاط البيئة ${metrics.ecoScore.toFixed(0)}/100 — يا زلمة، حتى جبال عمّان صارت تشتغل معك.`
-      : `Eco score ${metrics.ecoScore.toFixed(0)}/100 — even Amman's hills are working for you now.`,
+      ? `يا ${userName}، نقاط البيئة ${metrics.ecoScore.toFixed(0)}/100 — يا زلمة، حتى جبال عمّان صارت تشتغل معك.`
+      : `${userName}, eco score ${metrics.ecoScore.toFixed(0)}/100 — even Amman's hills are working for you now.`,
   ];
 
   return pool[Math.floor(Math.random() * pool.length)];
+}
+
+function normalizeName(userName: string): string {
+  const trimmed = userName.trim().slice(0, 40);
+  return trimmed || 'Driver';
 }

@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { memo, useState, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import {
   AreaChart,
@@ -50,7 +50,7 @@ interface ElevationChartProps {
   onIndexChange?: (i: number) => void;
 }
 
-export function ElevationChart({ data, metrics, activeIndex = 0, onIndexChange }: ElevationChartProps) {
+export const ElevationChart = memo(function ElevationChart({ data, metrics, activeIndex = 0, onIndexChange }: ElevationChartProps) {
   const [hovered, setHovered] = useState<number | null>(null);
   const tc = useThemeColors();
   const t  = useT();
@@ -72,9 +72,10 @@ export function ElevationChart({ data, metrics, activeIndex = 0, onIndexChange }
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 32 }}
+      initial={{ opacity: 0, y: 24 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ delay: 1.2, type: 'spring', stiffness: 100, damping: 20 }}
+      exit={{ opacity: 0, y: 18 }}
+      transition={{ delay: 0.22, type: 'spring', stiffness: 100, damping: 20 }}
       className="elevation-float"
     >
       <div
@@ -162,4 +163,4 @@ export function ElevationChart({ data, metrics, activeIndex = 0, onIndexChange }
       </div>
     </motion.div>
   );
-}
+});

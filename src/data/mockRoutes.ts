@@ -77,39 +77,33 @@ export const FALLBACK_BETA = buildFallback([
   884, 876, 868, 858, 848, 938, 928, 924, 921, 920,
 ]);
 
-// ─── Google Maps Apple-style Light Theme ─────────────────────────────────────
-// Warm ivory land (#FAF9F6), clean white roads, Apple-blue water, green parks.
-// Minimal labels — only locality names. No POIs, no transit clutter.
+// ─── Google Maps Pearl / Silver Light Theme ───────────────────────────────────
+// Cool pearl-white land, crisp white roads, silver-blue water — zero labels.
+// Inspired by Apple Vision Pro's minimal spatial UI.
 export const MAP_STYLE_LIGHT: google.maps.MapTypeStyle[] = [
-  // Warm ivory base (Apple Maps' signature — not stark white)
-  { elementType: 'geometry',           stylers: [{ color: '#FAF9F6' }] },
-  // Default: hide all labels
+  // Pearl-white base
+  { elementType: 'geometry',           stylers: [{ color: '#EBEBEB' }] },
+  // Hide ALL labels — clean viewport
   { elementType: 'labels',             stylers: [{ visibility: 'off' }] },
-  { elementType: 'labels.text.stroke', stylers: [{ color: '#FAF9F6' }] },
-  { elementType: 'labels.text.fill',   stylers: [{ color: 'rgba(0,0,0,0.48)' }] },
-  // Show only locality/neighbourhood names
-  { featureType: 'administrative.locality', elementType: 'labels',              stylers: [{ visibility: 'on' }] },
-  { featureType: 'administrative.locality', elementType: 'labels.text.fill',    stylers: [{ color: 'rgba(0,0,0,0.58)' }] },
-  { featureType: 'administrative.locality', elementType: 'labels.text.stroke',  stylers: [{ color: '#FAF9F6', weight: 3 }] },
-  // Strip POIs and transit
+  // Strip POIs and transit clutter
   { featureType: 'poi',     stylers: [{ visibility: 'off' }] },
   { featureType: 'transit', stylers: [{ visibility: 'off' }] },
-  // Road hierarchy — local streets white, arterials warm, highways warm amber
-  { featureType: 'road',              elementType: 'geometry',        stylers: [{ color: '#FFFFFF' }] },
-  { featureType: 'road',              elementType: 'geometry.stroke', stylers: [{ color: '#ECEAE4' }] },
-  { featureType: 'road.local',        elementType: 'geometry',        stylers: [{ color: '#FDFCF9' }] },
-  { featureType: 'road.arterial',     elementType: 'geometry',        stylers: [{ color: '#F7F4EE' }] },
-  { featureType: 'road.arterial',     elementType: 'geometry.stroke', stylers: [{ color: '#EAE6DC' }] },
-  { featureType: 'road.highway',      elementType: 'geometry',        stylers: [{ color: '#EEEADB' }] },
-  { featureType: 'road.highway',      elementType: 'geometry.stroke', stylers: [{ color: '#E2DCCC' }] },
-  // Apple Maps blue water
-  { featureType: 'water',             elementType: 'geometry',        stylers: [{ color: '#BDD8F0' }] },
-  // Land + nature
-  { featureType: 'landscape',         elementType: 'geometry',        stylers: [{ color: '#FAF9F6' }] },
-  { featureType: 'landscape.natural', elementType: 'geometry',        stylers: [{ color: '#EDF2E2' }] },
-  { featureType: 'landscape.man_made',elementType: 'geometry',        stylers: [{ color: '#F4F2EC' }] },
-  { featureType: 'poi.park',          elementType: 'geometry',        stylers: [{ color: '#D8EAC8' }] },
-  { featureType: 'poi.sports_complex',elementType: 'geometry',        stylers: [{ color: '#DCE8C8' }] },
+  // Roads — crisp white on silver base
+  { featureType: 'road',              elementType: 'geometry',        stylers: [{ color: '#FAFAFA' }] },
+  { featureType: 'road',              elementType: 'geometry.stroke', stylers: [{ color: '#E0E0E0' }] },
+  { featureType: 'road.local',        elementType: 'geometry',        stylers: [{ color: '#F5F5F5' }] },
+  { featureType: 'road.arterial',     elementType: 'geometry',        stylers: [{ color: '#F0EFEA' }] },
+  { featureType: 'road.arterial',     elementType: 'geometry.stroke', stylers: [{ color: '#E4E2DA' }] },
+  { featureType: 'road.highway',      elementType: 'geometry',        stylers: [{ color: '#E8E6DE' }] },
+  { featureType: 'road.highway',      elementType: 'geometry.stroke', stylers: [{ color: '#DCDAD0' }] },
+  // Silver-blue water (cool, premium)
+  { featureType: 'water',             elementType: 'geometry',        stylers: [{ color: '#C8D8EC' }] },
+  // Landscape — subtle grey tones
+  { featureType: 'landscape',         elementType: 'geometry',        stylers: [{ color: '#E8E8E8' }] },
+  { featureType: 'landscape.natural', elementType: 'geometry',        stylers: [{ color: '#DEEBD6' }] },
+  { featureType: 'landscape.man_made',elementType: 'geometry',        stylers: [{ color: '#EDEDED' }] },
+  { featureType: 'poi.park',          elementType: 'geometry',        stylers: [{ color: '#D4E4CE' }] },
+  { featureType: 'poi.sports_complex',elementType: 'geometry',        stylers: [{ color: '#D8E8CC' }] },
 ];
 
 // ─── Google Maps Dark Style ───────────────────────────────────────────────────

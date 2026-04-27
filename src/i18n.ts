@@ -1,4 +1,4 @@
-import { useApp, type Language } from './context/AppContext';
+import { useAppLanguage, type Language } from './context/AppContext';
 
 // ─── Full bilingual translation map ──────────────────────────────────────────
 export const T = {
@@ -227,6 +227,6 @@ export const T = {
 export type Translations = typeof T.en;
 
 export function useT(): Translations {
-  const { language } = useApp();
+  const { language } = useAppLanguage();
   return T[language] as unknown as Translations;
 }

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { memo, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronDown } from 'lucide-react';
 import { useThemeColors } from '../context/AppContext';
@@ -172,7 +172,7 @@ interface MetricCardProps {
   color?: string;
 }
 
-export function MetricCard({ label, value, subValue, sparkData, delay = 0, color }: MetricCardProps) {
+export const MetricCard = memo(function MetricCard({ label, value, subValue, sparkData, delay = 0, color }: MetricCardProps) {
   const tc = useThemeColors();
   const valueColor = color ?? tc.textPrimary;
   return (
@@ -180,7 +180,7 @@ export function MetricCard({ label, value, subValue, sparkData, delay = 0, color
       initial={{ opacity: 0, x: -12 }}
       animate={{ opacity: 1, x: 0 }}
       transition={{ delay, ...SPRING }}
-      className="panel transition-panel"
+      className="panel transition-panel panel-interactive"
       style={{ borderRadius: 10, padding: '12px 14px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}
       whileHover={{ x: 2, transition: { duration: 0.15 } }}
     >
@@ -192,10 +192,10 @@ export function MetricCard({ label, value, subValue, sparkData, delay = 0, color
       {sparkData && <Sparkline data={sparkData} color={valueColor === tc.textPrimary ? tc.textMuted : valueColor} />}
     </motion.div>
   );
-}
+});
 
 // ─── Eco Score Card ───────────────────────────────────────────────────────────
-export function EcoScoreCard({ metrics, delay = 0 }: { metrics: EcoMetrics; delay?: number }) {
+export const EcoScoreCard = memo(function EcoScoreCard({ metrics, delay = 0 }: { metrics: EcoMetrics; delay?: number }) {
   const t = useT();
   return (
     <motion.div
@@ -224,10 +224,10 @@ export function EcoScoreCard({ metrics, delay = 0 }: { metrics: EcoMetrics; dela
       </div>
     </motion.div>
   );
-}
+});
 
 // ─── Vehicle Card ─────────────────────────────────────────────────────────────
-export function VehicleCard({
+export const VehicleCard = memo(function VehicleCard({
   mass, regenEfficiency, onMassChange, onRegenChange, delay = 0,
 }: {
   mass: number;
@@ -263,4 +263,4 @@ export function VehicleCard({
       </div>
     </motion.div>
   );
-}
+});

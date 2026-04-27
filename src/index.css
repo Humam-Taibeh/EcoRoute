@@ -80,6 +80,14 @@ html, body, #root {
   will-change: background, border-color, box-shadow;
 }
 
+.search-dock {
+  border-color: rgba(255, 255, 255, 0.12);
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.08) inset,
+    0 18px 34px rgba(0, 0, 0, 0.42),
+    0 0 0 1px rgba(0, 212, 255, 0.05);
+}
+
 .panel-elevated {
   backdrop-filter: blur(24px) saturate(180%);
   -webkit-backdrop-filter: blur(24px) saturate(180%);
@@ -322,14 +330,14 @@ input[type='range']::-webkit-slider-thumb:hover {
   gap: 32px;
 }
 
-/* ─── Elevation Float ────────────────────────────────────────────────────── */
+/* ─── Elevation Float — sits above the bottom dock (dock ≈ 24px + 52px = 76px) */
 .elevation-float {
   position: fixed;
-  bottom: 16px;
+  bottom: 100px;
   left: 50%;
   transform: translateX(-50%);
   z-index: 10;
-  width: min(700px, calc(100vw - 32px));
+  width: min(700px, calc(100vw - 360px));
 }
 
 /* ─── Map Fallback Grid ──────────────────────────────────────────────────── */
@@ -425,6 +433,14 @@ html.theme-light .panel {
     0 1px 0 rgba(255, 255, 255, 0.95) inset,
     0 4px 24px rgba(0, 0, 0, 0.06),
     0 1px 4px rgba(0, 0, 0, 0.04);
+}
+
+html.theme-light .search-dock {
+  border-color: rgba(0, 0, 0, 0.08);
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.98) inset,
+    0 10px 26px rgba(0, 0, 0, 0.08),
+    0 0 0 1px rgba(148, 163, 184, 0.12);
 }
 
 html.theme-light .panel-elevated {
@@ -610,4 +626,214 @@ html.theme-light .pac-item-selected {
 }
 html.theme-light .pac-item-query {
   color: #1D1D1F !important;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   LOGIN PAGE
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ── Blurred aerial map simulation ────────────────────────────────────────── */
+.login-map-bg {
+  position: absolute;
+  inset: 0;
+  /* Dark mode: Midnight Blue city grid with road patterns */
+  background:
+    repeating-linear-gradient(  0deg, transparent 0px, transparent 47px, rgba(0,212,255,0.022) 47px, rgba(0,212,255,0.022) 48px),
+    repeating-linear-gradient( 90deg, transparent 0px, transparent 63px, rgba(0,212,255,0.022) 63px, rgba(0,212,255,0.022) 64px),
+    repeating-linear-gradient( 15deg, transparent 0px, transparent 120px, rgba(0,212,255,0.010) 120px, rgba(0,212,255,0.010) 121px),
+    radial-gradient(ellipse 70% 50% at 25% 35%, rgba(0,35,65,0.75)  0%, transparent 60%),
+    radial-gradient(ellipse 55% 65% at 72% 68%, rgba(0,28,50,0.65)  0%, transparent 55%),
+    radial-gradient(ellipse 40% 35% at 55% 20%, rgba(0,50,30,0.30)  0%, transparent 48%),
+    linear-gradient(145deg, #040c14 0%, #070f18 45%, #040c0a 100%);
+  filter: blur(1px);
+  pointer-events: none;
+}
+
+.login-map-bg-light {
+  background:
+    repeating-linear-gradient(  0deg, transparent 0px, transparent 47px, rgba(0,0,0,0.025) 47px, rgba(0,0,0,0.025) 48px),
+    repeating-linear-gradient( 90deg, transparent 0px, transparent 63px, rgba(0,0,0,0.025) 63px, rgba(0,0,0,0.025) 64px),
+    radial-gradient(ellipse 70% 50% at 25% 35%, rgba(180,215,240,0.80) 0%, transparent 60%),
+    radial-gradient(ellipse 55% 65% at 72% 68%, rgba(175,215,195,0.70) 0%, transparent 55%),
+    radial-gradient(ellipse 40% 35% at 55% 20%, rgba(210,220,190,0.50) 0%, transparent 48%),
+    linear-gradient(145deg, #d8e8f4 0%, #e4f0e4 45%, #f0ecd8 100%);
+  filter: blur(1px);
+}
+
+.login-root {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+/* Ambient depth orbs */
+.login-orb {
+  position: absolute;
+  border-radius: 50%;
+  pointer-events: none;
+  filter: blur(110px);
+}
+
+.login-orb-1 {
+  width: 640px;
+  height: 640px;
+  top: -200px;
+  left: -160px;
+  background: radial-gradient(circle, rgba(0,212,255,0.07) 0%, transparent 65%);
+  animation: loginOrbFloat 11s ease-in-out infinite;
+}
+
+.login-orb-2 {
+  width: 520px;
+  height: 520px;
+  bottom: -160px;
+  right: -100px;
+  background: radial-gradient(circle, rgba(0,230,118,0.06) 0%, transparent 65%);
+  animation: loginOrbFloat 13s ease-in-out infinite reverse;
+  animation-delay: -6s;
+}
+
+.login-orb-light.login-orb-1 {
+  background: radial-gradient(circle, rgba(0,212,255,0.10) 0%, transparent 65%);
+  filter: blur(130px);
+}
+
+.login-orb-light.login-orb-2 {
+  background: radial-gradient(circle, rgba(0,230,118,0.09) 0%, transparent 65%);
+  filter: blur(130px);
+}
+
+@keyframes loginOrbFloat {
+  0%, 100% { transform: translate(0,   0)   scale(1);    }
+  33%       { transform: translate(45px,-30px) scale(1.06); }
+  66%       { transform: translate(-20px,25px) scale(0.96); }
+}
+
+/* Grid overlay */
+.login-grid {
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(255,255,255,0.016) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,255,255,0.016) 1px, transparent 1px);
+  background-size: 64px 64px;
+  pointer-events: none;
+}
+
+html.theme-light .login-grid {
+  background-image:
+    linear-gradient(rgba(0,0,0,0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0,0,0,0.04) 1px, transparent 1px);
+}
+
+/* Card wrapper */
+.login-card-wrapper {
+  position: relative;
+  z-index: 1;
+  width: 420px;
+  max-width: calc(100vw - 32px);
+}
+
+/* Card */
+.login-card {
+  position: relative;
+  overflow: hidden;
+  border-radius: 24px;
+  padding: 38px 36px 32px;
+  background: rgba(255, 255, 255, 0.03) !important;
+  border: 1px solid rgba(255, 255, 255, 0.09) !important;
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.08) inset,
+    0 26px 46px rgba(0, 0, 0, 0.45),
+    0 0 0 1px rgba(0, 212, 255, 0.04) !important;
+}
+
+.login-card-light {
+  background: rgba(255,255,255,0.78) !important;
+  border:     1px solid rgba(0,0,0,0.07) !important;
+  box-shadow: 0 8px 48px rgba(0,0,0,0.08), 0 1px 0 rgba(255,255,255,0.92) inset !important;
+}
+
+/* Icon */
+.login-icon {
+  width: 46px;
+  height: 46px;
+  border-radius: 14px;
+  background: rgba(0,212,255,0.06);
+  border: 1px solid rgba(0,212,255,0.18);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  box-shadow: 0 0 20px rgba(0,212,255,0.09);
+}
+
+.login-icon-light {
+  background: rgba(0,212,255,0.09);
+  border:     1px solid rgba(0,212,255,0.22);
+  box-shadow: 0 0 14px rgba(0,212,255,0.08);
+}
+
+.login-neural-link {
+  position: absolute;
+  inset: -1px;
+  border-radius: 24px;
+  pointer-events: none;
+  background:
+    radial-gradient(circle at 20% 20%, rgba(0, 212, 255, 0.1) 0, transparent 38%),
+    radial-gradient(circle at 78% 80%, rgba(0, 230, 118, 0.08) 0, transparent 34%);
+}
+
+.login-neural-link::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  border: 1px solid rgba(0, 212, 255, 0.16);
+  animation: neuralPulse 2.4s ease-in-out infinite;
+}
+
+@keyframes neuralPulse {
+  0%,
+  100% {
+    opacity: 0.45;
+    box-shadow: 0 0 0 0 rgba(0, 212, 255, 0);
+  }
+  50% {
+    opacity: 1;
+    box-shadow: 0 0 0 8px rgba(0, 212, 255, 0.05);
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   PANEL HOVER MICRO-INTERACTIONS
+   Adds a subtle lift to interactive metric panels for premium tactile feel.
+   Applied via .panel-interactive class on MetricCard / EcoScoreCard wrappers.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.panel-interactive {
+  transition:
+    background     0.2s ease,
+    border-color   0.2s ease,
+    box-shadow     0.2s ease,
+    transform      0.2s ease;
+}
+
+.panel-interactive:hover {
+  transform:  translateZ(0) translateY(-1px);
+  box-shadow:
+    0 1px 0 rgba(255,255,255,0.09) inset,
+    0 6px 24px rgba(0,0,0,0.45),
+    0 0 0 1px rgba(255,255,255,0.06);
+}
+
+html.theme-light .panel-interactive:hover {
+  transform:  translateZ(0) translateY(-1px);
+  box-shadow:
+    0 1px 0 rgba(255,255,255,0.98) inset,
+    0 6px 28px rgba(0,0,0,0.09),
+    0 1px 4px rgba(0,0,0,0.05);
 }
